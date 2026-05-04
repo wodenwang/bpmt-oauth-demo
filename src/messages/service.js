@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 export class ValidationError extends Error {
-  constructor(message = 'Invalid message input') {
+  constructor(message = '留言输入不合法') {
     super(message);
     this.name = 'ValidationError';
     this.status = 400;
@@ -9,7 +9,7 @@ export class ValidationError extends Error {
 }
 
 export class PermissionError extends Error {
-  constructor(message = 'Permission denied') {
+  constructor(message = '没有权限执行该操作') {
     super(message);
     this.name = 'PermissionError';
     this.status = 403;
@@ -17,7 +17,7 @@ export class PermissionError extends Error {
 }
 
 export class NotFoundError extends Error {
-  constructor(message = 'Message not found') {
+  constructor(message = '留言不存在') {
     super(message);
     this.name = 'NotFoundError';
     this.status = 404;
@@ -39,19 +39,19 @@ function defaultClock() {
 function requireUserid(currentUser) {
   const userid = typeof currentUser?.userid === 'string' ? currentUser.userid.trim() : '';
   if (!userid) {
-    throw new PermissionError('Current user is required');
+    throw new PermissionError('请先登录后再操作');
   }
   return userid;
 }
 
 function validateText(value, fieldName) {
   if (typeof value !== 'string') {
-    throw new ValidationError(`${fieldName} is required`);
+    throw new ValidationError(`${fieldName}不能为空`);
   }
 
   const normalized = value.trim();
   if (!normalized) {
-    throw new ValidationError(`${fieldName} is required`);
+    throw new ValidationError(`${fieldName}不能为空`);
   }
 
   return normalized;
@@ -59,14 +59,14 @@ function validateText(value, fieldName) {
 
 function validateMessageInput(input = {}) {
   if (!input || typeof input !== 'object') {
-    throw new ValidationError('message input is required');
+    throw new ValidationError('留言内容不能为空');
   }
 
   const title = validateText(input.title, 'title');
   const content = validateText(input.content, 'content');
 
   if (title.length > 200) {
-    throw new ValidationError('title must be at most 200 characters');
+    throw new ValidationError('标题长度不能超过 200 个字符');
   }
 
   return { title, content };
@@ -74,7 +74,7 @@ function validateMessageInput(input = {}) {
 
 function assertCreator(row, userid) {
   if (row.creatorUserid !== userid) {
-    throw new PermissionError('Only the creator can modify this message');
+    throw new PermissionError('只能修改或删除自己创建的留言');
   }
 }
 
@@ -137,7 +137,7 @@ export function createMessageService({ repository, idFactory = randomUUID, clock
 
   async function deleteMany(ids, currentUser) {
     if (!Array.isArray(ids)) {
-      throw new ValidationError('ids must be an array');
+      throw new ValidationError('批量删除参数必须是数组');
     }
 
     const results = [];

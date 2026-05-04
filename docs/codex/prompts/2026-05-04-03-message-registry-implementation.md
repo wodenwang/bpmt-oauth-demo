@@ -603,3 +603,26 @@ npm test
 - 单元测试使用内存 fake repository，不写入真实数据库。
 - `deleteMany(ids, currentUser)` 当前返回每条删除操作的布尔结果数组；后续路由层如果需要展示删除数量，可在路由层统计。
 - 本归档不包含真实密钥、授权码、访问令牌、数据库密码或本机专用凭据。
+
+## Task 5 审查后小修复
+
+Task 5 规格审查和代码质量审查均通过。质量审查提醒业务错误 `message` 可能在后续统一错误页直接展示，因此将服务层默认错误文案和校验错误文案统一改为中文，并补充状态码与中文安全文案断言。
+
+补充验证命令：
+
+```bash
+npm test -- test/message-service.test.js
+npm test
+```
+
+补充验证结果：
+
+```text
+npm test -- test/message-service.test.js
+# tests 8
+# pass 8
+
+npm test
+# tests 40
+# pass 40
+```

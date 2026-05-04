@@ -55,7 +55,25 @@ test('create rejects blank title and content', async () => {
 
 test('create rejects non-object input as validation error', async () => {
   const service = createMessageService({ repository: createRepo() });
-  await assert.rejects(() => service.create(null, { userid: 'admin' }), ValidationError);
+  await assert.rejects(
+    () => service.create(null, { userid: 'admin' }),
+    (error) => error instanceof ValidationError && error.status === 400 && /留言内容不能为空/.test(error.message)
+  );
+});
+
+test('service errors expose Chinese safe messages and status codes', async () => {
+  assert.equal(new ValidationError().status, 400);
+  assert.match(new ValidationError().message, /留言输入不合法/);
+  assert.equal(new PermissionError().status, 403);
+  assert.match(new PermissionError().message, /没有权限/);
+  assert.equal(new NotFoundError().status, 404);
+  assert.match(new NotFoundError().message, /留言不存在/);
+
+  const service = createMessageService({ repository: createRepo() });
+  await assert.rejects(
+    () => service.create({ title: '标题', content: '内容' }, { userid: ' ' }),
+    (error) => error instanceof PermissionError && error.status === 403 && /请先登录/.test(error.message)
+  );
 });
 
 test('update allows only creator', async () => {
