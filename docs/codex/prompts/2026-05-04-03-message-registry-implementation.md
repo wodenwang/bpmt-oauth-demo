@@ -949,3 +949,62 @@ npm test -- test/message-routes.test.js
 - 新增弹窗由前端内联 HTML 构造；查看和编辑弹窗通过 fetch 读取服务端 modal HTML。
 - 行内按钮的 record id 来自服务端记录，当前沿用已有留言 id 约束；用户可见标题和内容仍由 EJS 默认转义保护。
 - 本归档不包含真实 client secret、BPMT API app secret、授权码、访问令牌、数据库密码或本机专用凭据。
+
+## Task 9 用户目标
+
+为留言登记 demo 补齐 Docker 镜像构建文件、中文 README 运行说明和提示词归档。Task 9 只做 Docker、README 和归档，不做真实环境 OAuth 或 CRUD 联调。
+
+## Task 9 Codex 任务提示词
+
+```text
+你是 Task 9 的实现代理。请在隔离 worktree 中直接编辑文件、运行测试并提交。你不是独自在代码库中工作；不要回退、覆盖或重写他人已提交的改动，只在本任务写入范围内增量修改。
+
+工作目录：/Users/wenzhewang/workspace/bpmt_project/bpmt-oauth-demo/.worktrees/message-registry
+
+必须遵守：
+- 全中文文档。
+- 遵守 AGENTS.md，不得写入真实 client_secret、BPMT_API_APP_SECRET、授权 code、access_token、密码或数据库凭据。
+- 只实现 Task 9，不做真实环境 OAuth/CRUD 联调。
+- 最后提交，提交信息建议：`docs: 添加运行和 Docker 说明`。
+
+Task 9：Docker、README 和提示词归档
+
+写入范围：
+- Create: Dockerfile
+- Create: .dockerignore
+- Create/Modify: README.md
+- Modify: docs/codex/prompts/2026-05-04-03-message-registry-implementation.md
+- 可选小修复：如果浏览器验证噪音来自 favicon 404，可在 app 层加一个 `/favicon.ico` 204 响应并补测试；若做此项，说明原因并纳入提交。不要扩大到其他功能。
+```
+
+## Task 9 修改文件
+
+- `Dockerfile`
+- `.dockerignore`
+- `README.md`
+- `docs/codex/prompts/2026-05-04-03-message-registry-implementation.md`
+
+## Task 9 验证命令
+
+```bash
+npm test
+docker build -t bpmt-oauth-demo:local .
+rg -n "(client_secret|BPMT_API_APP_SECRET|BPMT_OAUTH_CLIENT_SECRET|access_token|authorization code|授权码|密码|DB_PASSWORD)\\s*[:=]\\s*[^<\\s]" README.md Dockerfile .dockerignore docs/codex/prompts/2026-05-04-03-message-registry-implementation.md
+git status --short --branch
+```
+
+## Task 9 结果摘要
+
+- 已新增 `.dockerignore`，忽略 `.git`、`.codex`、`.superpowers`、`.worktrees`、`node_modules`、npm debug、`.DS_Store`、`.env`、`.env.*`，并通过 `!.env.example` 保留示例环境文件。
+- 已新增 `Dockerfile`，使用 `node:20-alpine` 多阶段构建，安装 production 依赖，复制 `package.json`、`package-lock.json`、`src`、`views`、`public` 和 `scripts`，容器监听 `81` 端口并以 `npm start` 启动。
+- 已新增中文 `README.md`，包含项目说明、功能、环境变量、初始化表结构、本地运行、Docker 运行、安全提醒和验证命令。
+- README 明确 OAuth 回调地址为 `http://localhost:81/oauth/callback`，系统不维护用户密码，新增留言创建人由服务端写入当前 BPMT `userid`，退出只清理 demo 本地 session，不承诺退出 BPMT 登录态。
+- README 明确本 demo 不实现 OIDC、refresh token 或跨系统单点登出。
+- 本任务没有修改 OAuth、留言 CRUD、数据库或页面交互代码；未执行真实环境 OAuth/CRUD 联调。
+
+## Task 9 已知限制
+
+- Docker 运行依赖外部环境变量和可访问的 BPMT、MariaDB 服务；不同 Docker 网络环境下可能需要调整 `.env` 中的主机名。
+- Docker 验证只构建镜像，不启动容器做真实 OAuth 登录或 CRUD 联调。
+- 未添加 `/favicon.ico` 204 响应，因为本任务未执行浏览器验证，也没有发现 favicon 404 噪音证据。
+- 本归档不包含真实 client secret、BPMT API app secret、授权码、访问令牌、数据库密码或本机专用凭据。
