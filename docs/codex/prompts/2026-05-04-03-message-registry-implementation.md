@@ -158,3 +158,77 @@ npm test -- test/bpmt-signature.test.js test/table-definition.test.js
 - Task 2 没有连接本机 BPMT 实例、MariaDB 或 OpenAPI 文档，只通过单元测试验证 canonical string、签名头和表定义结构。
 - `signBpmtRequest(...)` 由调用方传入 `timestamp`、`nonce`、`appKey` 和 `appSecret`；后续 Task 需要负责生成 nonce、读取配置、发起 HTTP 请求和处理 BPMT 返回值。
 - 本归档不包含真实密钥、授权码、访问令牌、数据库密码或本机专用凭据。
+
+## Task 3 用户目标
+
+实现一次性 `npm run setup` 基础命令，用服务端环境变量中的 BPMT API 签名配置调用 BPMT OpenAPI，创建 demo 所需的 `DEMO_MESSAGE` 动态表；如果表已存在，则将 `409 Conflict` 视为已初始化并继续执行 DDL 同步。Task 3 不实现真实留言 CRUD、OAuth 页面或数据库业务逻辑。
+
+## Task 3 Codex 任务提示词
+
+```text
+你正在实现 Task 3: 一次性 setup 命令。
+
+要求：
+1. 只实现 Task 3，不实现后续任务。
+2. 只写入 `src/bpmt/api.js`、`scripts/setup.js`、`test/bpmt-api.test.js`，并更新本滚动归档。
+3. 采用 TDD 顺序：先写 `test/bpmt-api.test.js`，运行 `npm test -- test/bpmt-api.test.js` 确认缺少 `src/bpmt/api.js` 时失败。
+4. 创建 `src/bpmt/api.js`，实现 `createBpmtApiClient(...)`、`createDynamicTable(...)` 和 `syncDynamicTableDdl(...)`。
+5. BPMT 签名 canonical path 必须使用 public URI，例如 `/api/v1/dynamic-tables`，不能只使用 `/v1/dynamic-tables`。
+6. 创建 `scripts/setup.js`，读取 `loadConfig()`，脱敏输出 BPMT API 配置，创建 `DEMO_MESSAGE` 表，已存在时执行 DDL 同步。
+7. 不写入真实密钥；测试只能使用固定假值。
+8. 最终运行 `npm test -- test/bpmt-api.test.js` 和 `npm test`。
+```
+
+## Task 3 修改文件
+
+- `src/bpmt/api.js`
+- `scripts/setup.js`
+- `test/bpmt-api.test.js`
+- `docs/codex/prompts/2026-05-04-03-message-registry-implementation.md`
+
+## Task 3 验证命令
+
+Task 3 按 TDD 顺序执行的关键验证命令：
+
+```bash
+npm test -- test/bpmt-api.test.js
+npm test
+git diff --name-only
+git status --short --branch
+```
+
+RED 阶段验证结果：
+
+```text
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '.../src/bpmt/api.js'
+```
+
+GREEN 阶段验证结果：
+
+```text
+npm test -- test/bpmt-api.test.js
+# tests 2
+# pass 2
+
+npm test
+# tests 12
+# pass 12
+```
+
+## Task 3 结果摘要
+
+- 已新增 `createBpmtApiClient(...)`，支持注入 `fetchImpl`、`now` 和 `nonce`，便于单元测试固定 HTTP 请求和签名输入。
+- 已实现 `createDynamicTable(tableDefinition)`，向 `${baseUrl}/v1/dynamic-tables` 发起 `POST`，请求体为 `DEMO_MESSAGE_TABLE` 的 JSON。
+- 已实现 `syncDynamicTableDdl(tableName)`，向 `${baseUrl}/v1/dynamic-tables/{tableName}/ddl:sync` 发起 `POST`。
+- 已确认签名调用使用 public canonical path：`/api${publicPath}`，例如 `/api/v1/dynamic-tables`；实际请求 URL 继续使用配置中的 `BPMT_API_BASE_URL` 加 public path，例如 `http://127.0.0.1/api/v1/dynamic-tables`。
+- 已实现响应解析：优先读取 `response.text()` 后解析 JSON；非 JSON 响应以 `{ raw }` 返回，避免错误信息丢失。
+- 已将 `409 Conflict` 处理为 `{ alreadyExists: true, payload }`，用于 setup 命令幂等运行。
+- 已新增 `scripts/setup.js`，通过 `loadConfig()` 读取运行环境变量，通过 `redactConfig(config).bpmtApi` 打印脱敏配置，并输出中文初始化进度。
+
+## Task 3 已知限制
+
+- Task 3 单元测试使用 fake fetch，没有连接本机 BPMT 实例，也没有真实创建或同步 `DEMO_MESSAGE` 表。
+- `scripts/setup.js` 不自动加载 `.env`；当前只依赖调用进程已经提供的环境变量。
+- `scripts/setup.js` 捕获异常后只打印 `error.message`，不会输出 `client_secret`、`BPMT_API_APP_SECRET`、授权码、访问令牌或数据库密码。
+- setup 命令只初始化 BPMT 动态表，不创建本地 MySQL 留言业务表，不实现 OAuth 登录、留言 CRUD 或页面。
+- 本归档不包含真实密钥、授权码、访问令牌、数据库密码或本机专用凭据。
