@@ -1,7 +1,15 @@
 import crypto from 'node:crypto';
 
 function encodeQueryComponent(value) {
-  return encodeURIComponent(value).replace(/\+/g, '%20');
+  return encodeURIComponent(value).replace(/[!'()~]/g, (char) =>
+    `%${char.charCodeAt(0).toString(16).toUpperCase()}`
+  );
+}
+
+function compareUtf16(left, right) {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
 }
 
 export function normalizeQuery(query = '') {
@@ -15,8 +23,9 @@ export function normalizeQuery(query = '') {
 
   return pairs
     .sort(([leftName, leftValue], [rightName, rightValue]) => {
-      if (leftName === rightName) return leftValue.localeCompare(rightValue);
-      return leftName.localeCompare(rightName);
+      const nameOrder = compareUtf16(leftName, rightName);
+      if (nameOrder !== 0) return nameOrder;
+      return compareUtf16(leftValue, rightValue);
     })
     .map(([name, value]) => `${encodeQueryComponent(name)}=${encodeQueryComponent(value)}`)
     .join('&');
