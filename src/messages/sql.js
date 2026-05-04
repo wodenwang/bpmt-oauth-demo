@@ -42,12 +42,12 @@ function buildWhere(filters = {}) {
   const creatorUserid = normalizeFilterValue(filters.creatorUserid);
 
   if (title) {
-    clauses.push(`TITLE LIKE ? ESCAPE '\\\\'`);
+    clauses.push(`DEMO_TITLE LIKE ? ESCAPE '\\\\'`);
     args.push(`%${escapeLikeValue(title)}%`);
   }
 
   if (creatorUserid) {
-    clauses.push('CREATOR_USERID = ?');
+    clauses.push('DEMO_CREATOR_USERID = ?');
     args.push(creatorUserid);
   }
 
@@ -64,7 +64,7 @@ export function buildListMessagesQuery(filters = {}) {
   const { whereSql, args } = buildWhere(filters);
 
   return {
-    sql: `SELECT ID, TITLE, CONTENT, CREATOR_USERID, CREATE_TIME, UPDATE_TIME FROM ${TABLE}${whereSql} ORDER BY CREATE_TIME DESC, ID DESC LIMIT ? OFFSET ?`,
+    sql: `SELECT DEMO_ID, DEMO_TITLE, DEMO_CONTENT, DEMO_CREATOR_USERID, DEMO_CREATE_TIME, DEMO_UPDATE_TIME FROM ${TABLE}${whereSql} ORDER BY DEMO_CREATE_TIME DESC, DEMO_ID DESC LIMIT ? OFFSET ?`,
     args: [...args, pageSize, offset],
     page,
     pageSize
@@ -81,28 +81,28 @@ export function buildCountMessagesQuery(filters = {}) {
 
 export function buildFindMessageQuery(id) {
   return {
-    sql: `SELECT ID, TITLE, CONTENT, CREATOR_USERID, CREATE_TIME, UPDATE_TIME FROM ${TABLE} WHERE ID = ?`,
+    sql: `SELECT DEMO_ID, DEMO_TITLE, DEMO_CONTENT, DEMO_CREATOR_USERID, DEMO_CREATE_TIME, DEMO_UPDATE_TIME FROM ${TABLE} WHERE DEMO_ID = ?`,
     args: [id]
   };
 }
 
 export function buildInsertMessageQuery({ id, title, content, creatorUserid, now }) {
   return {
-    sql: `INSERT INTO ${TABLE} (ID, TITLE, CONTENT, CREATOR_USERID, CREATE_TIME, UPDATE_TIME) VALUES (?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO ${TABLE} (DEMO_ID, DEMO_TITLE, DEMO_CONTENT, DEMO_CREATOR_USERID, DEMO_CREATE_TIME, DEMO_UPDATE_TIME) VALUES (?, ?, ?, ?, ?, ?)`,
     args: [id, title, content, creatorUserid, now, now]
   };
 }
 
 export function buildUpdateMessageQuery({ id, title, content, now }) {
   return {
-    sql: `UPDATE ${TABLE} SET TITLE = ?, CONTENT = ?, UPDATE_TIME = ? WHERE ID = ?`,
+    sql: `UPDATE ${TABLE} SET DEMO_TITLE = ?, DEMO_CONTENT = ?, DEMO_UPDATE_TIME = ? WHERE DEMO_ID = ?`,
     args: [title, content, now, id]
   };
 }
 
 export function buildDeleteMessageQuery(id) {
   return {
-    sql: `DELETE FROM ${TABLE} WHERE ID = ?`,
+    sql: `DELETE FROM ${TABLE} WHERE DEMO_ID = ?`,
     args: [id]
   };
 }

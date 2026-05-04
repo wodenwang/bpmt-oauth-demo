@@ -123,6 +123,21 @@ export function createBpmtApiClient({ baseUrl, appKey, appSecret, fetchImpl = fe
       }
     },
 
+    async getDynamicTable(tableName) {
+      return requestJson({
+        method: 'GET',
+        publicPath: `/v1/dynamic-tables/${encodeURIComponent(tableName)}`
+      });
+    },
+
+    async updateDynamicTable(tableName, tableDefinition) {
+      return requestJson({
+        method: 'PUT',
+        publicPath: `/v1/dynamic-tables/${encodeURIComponent(tableName)}`,
+        bodyObject: tableDefinition
+      });
+    },
+
     async syncDynamicTableDdl(tableName) {
       return requestJson({
         method: 'POST',

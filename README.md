@@ -58,7 +58,7 @@ cp .env.example .env
 
 ## 初始化表结构
 
-初始化命令会读取服务端环境变量，使用 BPMT API 签名调用 OpenAPI 创建 `DEMO_MESSAGE` 动态表。如果表已存在，脚本会把 `409 Conflict` 视为已初始化并继续执行 DDL 同步。
+初始化命令会读取服务端环境变量，使用 BPMT API 签名调用 OpenAPI 创建 `DEMO_MESSAGE` 动态表。如果表已存在，脚本会读取当前动态表定义；定义一致时直接执行 DDL 同步，定义不一致时先通过 BPMT API 更新动态表定义，再执行 DDL 同步。
 
 ```bash
 npm run setup
@@ -70,6 +70,17 @@ npm run setup
 - `BPMT_API_APP_KEY` 和 `BPMT_API_APP_SECRET` 已配置。
 - MariaDB 中可访问 `bpmt` 数据库。
 - OAuth 客户端已在 BPMT 后台登记，回调地址精确为 `http://localhost:81/oauth/callback`。
+
+`DEMO_MESSAGE` 字段命名统一使用 `DEMO_` 前缀：
+
+| 字段 | 说明 |
+| --- | --- |
+| `DEMO_ID` | 主键，服务端生成 UUID |
+| `DEMO_TITLE` | 留言标题 |
+| `DEMO_CONTENT` | 留言内容 |
+| `DEMO_CREATOR_USERID` | 创建人，取当前 BPMT OAuth 登录态的 `userid` |
+| `DEMO_CREATE_TIME` | 创建时间 |
+| `DEMO_UPDATE_TIME` | 更新时间 |
 
 ## 本地运行
 

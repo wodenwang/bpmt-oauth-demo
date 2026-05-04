@@ -346,10 +346,10 @@ test('DEMO_MESSAGE table definition matches confirmed design', () => {
   assert.equal(DEMO_MESSAGE_TABLE.cacheFlag, 0);
   assert.deepEqual(
     DEMO_MESSAGE_TABLE.columns.map((column) => column.name),
-    ['ID', 'TITLE', 'CONTENT', 'CREATOR_USERID', 'CREATE_TIME', 'UPDATE_TIME']
+    ['DEMO_ID', 'DEMO_TITLE', 'DEMO_CONTENT', 'DEMO_CREATOR_USERID', 'DEMO_CREATE_TIME', 'DEMO_UPDATE_TIME']
   );
-  assert.equal(DEMO_MESSAGE_TABLE.columns.find((column) => column.name === 'ID').primaryKey, true);
-  assert.equal(DEMO_MESSAGE_TABLE.columns.find((column) => column.name === 'CONTENT').type, 'Clob');
+  assert.equal(DEMO_MESSAGE_TABLE.columns.find((column) => column.name === 'DEMO_ID').primaryKey, true);
+  assert.equal(DEMO_MESSAGE_TABLE.columns.find((column) => column.name === 'DEMO_CONTENT').type, 'Clob');
 });
 ```
 
@@ -425,7 +425,7 @@ export const DEMO_MESSAGE_TABLE = {
   cacheFlag: 0,
   columns: [
     {
-      name: 'ID',
+      name: 'DEMO_ID',
       description: '主键',
       type: 'String',
       totalSize: 36,
@@ -433,33 +433,33 @@ export const DEMO_MESSAGE_TABLE = {
       required: true
     },
     {
-      name: 'TITLE',
+      name: 'DEMO_TITLE',
       description: '留言标题',
       type: 'String',
       totalSize: 200,
       required: true
     },
     {
-      name: 'CONTENT',
+      name: 'DEMO_CONTENT',
       description: '留言内容',
       type: 'Clob',
       required: true
     },
     {
-      name: 'CREATOR_USERID',
+      name: 'DEMO_CREATOR_USERID',
       description: '创建人 userid',
       type: 'String',
       totalSize: 64,
       required: true
     },
     {
-      name: 'CREATE_TIME',
+      name: 'DEMO_CREATE_TIME',
       description: '创建时间',
       type: 'Date',
       required: true
     },
     {
-      name: 'UPDATE_TIME',
+      name: 'DEMO_UPDATE_TIME',
       description: '更新时间',
       type: 'Date',
       required: true
@@ -714,9 +714,9 @@ import {
 test('buildListMessagesQuery uses filters, limit, offset and parameter args', () => {
   const query = buildListMessagesQuery({ title: '测试', creatorUserid: 'admin', page: 2, pageSize: 20 });
   assert.match(query.sql, /FROM DEMO_MESSAGE/);
-  assert.match(query.sql, /TITLE LIKE \?/);
-  assert.match(query.sql, /CREATOR_USERID = \?/);
-  assert.match(query.sql, /ORDER BY CREATE_TIME DESC/);
+  assert.match(query.sql, /DEMO_TITLE LIKE \?/);
+  assert.match(query.sql, /DEMO_CREATOR_USERID = \?/);
+  assert.match(query.sql, /ORDER BY DEMO_CREATE_TIME DESC, DEMO_ID DESC/);
   assert.deepEqual(query.args, ['%测试%', 'admin', 20, 20]);
 });
 
@@ -789,12 +789,12 @@ function buildWhere(filters = {}) {
   const args = [];
 
   if (filters.title && filters.title.trim()) {
-    clauses.push('TITLE LIKE ?');
+    clauses.push('DEMO_TITLE LIKE ?');
     args.push(`%${filters.title.trim()}%`);
   }
 
   if (filters.creatorUserid && filters.creatorUserid.trim()) {
-    clauses.push('CREATOR_USERID = ?');
+    clauses.push('DEMO_CREATOR_USERID = ?');
     args.push(filters.creatorUserid.trim());
   }
 
@@ -811,7 +811,7 @@ export function buildListMessagesQuery(filters = {}) {
   const { whereSql, args } = buildWhere(filters);
 
   return {
-    sql: `SELECT ID, TITLE, CONTENT, CREATOR_USERID, CREATE_TIME, UPDATE_TIME FROM ${TABLE}${whereSql} ORDER BY CREATE_TIME DESC LIMIT ? OFFSET ?`,
+    sql: `SELECT DEMO_ID, DEMO_TITLE, DEMO_CONTENT, DEMO_CREATOR_USERID, DEMO_CREATE_TIME, DEMO_UPDATE_TIME FROM ${TABLE}${whereSql} ORDER BY DEMO_CREATE_TIME DESC, DEMO_ID DESC LIMIT ? OFFSET ?`,
     args: [...args, pageSize, offset],
     page,
     pageSize
@@ -828,28 +828,28 @@ export function buildCountMessagesQuery(filters = {}) {
 
 export function buildFindMessageQuery(id) {
   return {
-    sql: `SELECT ID, TITLE, CONTENT, CREATOR_USERID, CREATE_TIME, UPDATE_TIME FROM ${TABLE} WHERE ID = ?`,
+    sql: `SELECT DEMO_ID, DEMO_TITLE, DEMO_CONTENT, DEMO_CREATOR_USERID, DEMO_CREATE_TIME, DEMO_UPDATE_TIME FROM ${TABLE} WHERE DEMO_ID = ?`,
     args: [id]
   };
 }
 
 export function buildInsertMessageQuery({ id, title, content, creatorUserid, now }) {
   return {
-    sql: `INSERT INTO ${TABLE} (ID, TITLE, CONTENT, CREATOR_USERID, CREATE_TIME, UPDATE_TIME) VALUES (?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO ${TABLE} (DEMO_ID, DEMO_TITLE, DEMO_CONTENT, DEMO_CREATOR_USERID, DEMO_CREATE_TIME, DEMO_UPDATE_TIME) VALUES (?, ?, ?, ?, ?, ?)`,
     args: [id, title, content, creatorUserid, now, now]
   };
 }
 
 export function buildUpdateMessageQuery({ id, title, content, now }) {
   return {
-    sql: `UPDATE ${TABLE} SET TITLE = ?, CONTENT = ?, UPDATE_TIME = ? WHERE ID = ?`,
+    sql: `UPDATE ${TABLE} SET DEMO_TITLE = ?, DEMO_CONTENT = ?, DEMO_UPDATE_TIME = ? WHERE DEMO_ID = ?`,
     args: [title, content, now, id]
   };
 }
 
 export function buildDeleteMessageQuery(id) {
   return {
-    sql: `DELETE FROM ${TABLE} WHERE ID = ?`,
+    sql: `DELETE FROM ${TABLE} WHERE DEMO_ID = ?`,
     args: [id]
   };
 }
@@ -897,12 +897,12 @@ import {
 
 function mapRow(row) {
   return {
-    id: row.ID,
-    title: row.TITLE,
-    content: row.CONTENT,
-    creatorUserid: row.CREATOR_USERID,
-    createTime: row.CREATE_TIME,
-    updateTime: row.UPDATE_TIME
+    id: row.DEMO_ID,
+    title: row.DEMO_TITLE,
+    content: row.DEMO_CONTENT,
+    creatorUserid: row.DEMO_CREATOR_USERID,
+    createTime: row.DEMO_CREATE_TIME,
+    updateTime: row.DEMO_UPDATE_TIME
   };
 }
 

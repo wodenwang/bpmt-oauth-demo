@@ -146,7 +146,7 @@ npm test -- test/bpmt-signature.test.js test/table-definition.test.js
 - 已将 query 编码对齐 BPMT Java 服务端：空格输出 `%20`，`~!'()` 输出 `%7E%21%27%28%29`，`*` 保持不编码。
 - 已实现 `buildCanonicalString(...)`，按 `METHOD`、`PATH`、`NORMALIZED_QUERY`、`TIMESTAMP`、`NONCE`、`SHA256_HEX(BODY)` 用换行连接。
 - 已实现 `signBpmtRequest(...)`，使用 `HMAC-SHA256` 和服务端保存的 app secret 生成 `X-BPMT-Signature`，并返回 BPMT 所需的 `X-BPMT-App-Key`、`X-BPMT-Timestamp`、`X-BPMT-Nonce`、`X-BPMT-Signature` 请求头。
-- 已创建 `DEMO_MESSAGE_TABLE`，表名为 `DEMO_MESSAGE`，包含 `ID`、`TITLE`、`CONTENT`、`CREATOR_USERID`、`CREATE_TIME`、`UPDATE_TIME` 六个字段；`ID` 为主键，`CONTENT` 为 `Clob`。
+- 已创建 `DEMO_MESSAGE_TABLE`，表名为 `DEMO_MESSAGE`，包含 `DEMO_ID`、`DEMO_TITLE`、`DEMO_CONTENT`、`DEMO_CREATOR_USERID`、`DEMO_CREATE_TIME`、`DEMO_UPDATE_TIME` 六个字段；`DEMO_ID` 为主键，`DEMO_CONTENT` 为 `Clob`。
 - 已补充 signature golden 断言，覆盖固定输入下的签名值。
 - 已补充混合大小写、特殊字符、重复参数的 `normalizeQuery` 测试。
 - 已增强 `DEMO_MESSAGE_TABLE` 测试，全量断言字段 `type`、`totalSize`、`required`、`primaryKey` 等结构。
@@ -249,7 +249,7 @@ Task 3 初始提交后，代码质量审查指出以下问题需要修正：
 ### 修复内容
 
 - `test/bpmt-api.test.js` 新增 `X-BPMT-Signature` 精确断言，固定 `now=1777867200`、`nonce=nonce-1` 和测试假密钥 `api-secret`。
-- `createDynamicTable(...)` 的签名 golden 固定为 `faf2c8c2dce79b8fac84a307c5db6efb505864e6d3b235486b1c449115f18cec`，用于锁住 canonical path `/api/v1/dynamic-tables`。
+- `createDynamicTable(...)` 的签名 golden 固定为 `4a4466865aa75cc2ae75129a514839882254730c8ec743a1f95f8729c4d7f4d1`，用于锁住 canonical path `/api/v1/dynamic-tables`。
 - 新增 `syncDynamicTableDdl('DEMO_MESSAGE')` 测试，断言 URL 为 `http://127.0.0.1/api/v1/dynamic-tables/DEMO_MESSAGE/ddl:sync`，method 为 `POST`，签名 golden 为 `c0e62d244495ce6aface2e0cad6af53e9dc94b0c569114d8fc03d45521719cfa`，用于锁住 canonical path `/api/v1/dynamic-tables/DEMO_MESSAGE/ddl:sync`。
 - 新增非 `409` 错误测试，断言 `error.status`，并确认 `error.message` 包含 `code`、`error`、`message` 三个安全诊断字段，同时不包含测试假密钥。
 - `src/bpmt/api.js` 新增安全诊断格式化，只从 payload 中提取 `code`、`error`、`message`，并对当前 app secret 做兜底脱敏。
@@ -421,7 +421,7 @@ npm test
 ## Task 4 结果摘要
 
 - 已新增 `src/messages/sql.js`，集中构造 `DEMO_MESSAGE` 的参数化 SQL。
-- 已实现列表查询筛选：`TITLE LIKE ?`、`CREATOR_USERID = ?`、`ORDER BY CREATE_TIME DESC`、`LIMIT ? OFFSET ?`。
+- 已实现列表查询筛选：`DEMO_TITLE LIKE ?`、`DEMO_CREATOR_USERID = ?`、`ORDER BY DEMO_CREATE_TIME DESC`、`LIMIT ? OFFSET ?`。
 - 已实现计数查询，并复用列表筛选逻辑但不带分页参数。
 - 已实现按 id 查询、插入、更新、删除和当前数据库下表存在性检查。
 - 已将分页默认值设为 `page=1`、`pageSize=20`，并将 `pageSize` 上限限制为 `100`。
@@ -443,11 +443,11 @@ npm test
 Task 4 初始提交后，代码质量审查指出以下问题需要修正：
 
 - `normalizePage(...)` 和 `normalizePageSize(...)` 使用 `parseInt`，会把 `2abc` 解析成 `2`。
-- `TITLE LIKE ?` 没有转义 `%`、`_`、`\`，无法保证普通子串搜索语义。
+- `DEMO_TITLE LIKE ?` 没有转义 `%`、`_`、`\`，无法保证普通子串搜索语义。
 - `repository.insert(...)` 和 `repository.update(...)` 依赖 `this.findById(...)`，解构调用或回调传递时会丢失 `this`。
 - 缺少 repository 行为测试，未覆盖 fake pool 下的查询顺序、行映射、写后回读和删除返回值。
 - `mysql2` pool 未设置 `dateStrings: true`，未来 `Date` 对象直出到 EJS 时可能产生展示不一致。
-- 列表排序只按 `CREATE_TIME DESC`，同秒数据分页顺序不稳定。
+- 列表排序只按 `DEMO_CREATE_TIME DESC`，同秒数据分页顺序不稳定。
 - `buildWhere(...)` 对非 string filter 值直接 `.trim()`，会抛出 `trim is not a function`。
 
 ### 修复内容
@@ -458,7 +458,7 @@ Task 4 初始提交后，代码质量审查指出以下问题需要修正：
 - `test/message-sql.test.js` 新增非 string filter 测试，确认不会调用非法 `.trim()`。
 - `src/messages/sql.js` 新增严格正整数校验，字符串必须全量匹配数字且大于 0；内部数字参数仍要求正整数。
 - `src/messages/sql.js` 新增 LIKE 转义逻辑，将 `\`、`%`、`_` 转义为字面量搜索字符，并在 SQL 中声明 escape 字符。
-- `src/messages/sql.js` 将列表排序调整为 `ORDER BY CREATE_TIME DESC, ID DESC`，保证同秒稳定分页。
+- `src/messages/sql.js` 将列表排序调整为 `ORDER BY DEMO_CREATE_TIME DESC, DEMO_ID DESC`，保证同秒稳定分页。
 - `src/messages/repository.js` 将 repository 方法改为闭包函数，`insert(...)` 和 `update(...)` 直接调用闭包内的 `findById(...)`，不再依赖动态 `this`。
 - `test/message-repository.test.js` 新增 fake pool 行为测试，覆盖 `tableExists()`、`list()`、`findById()`、`insert()`、`update()`、`delete()` 和解构调用场景。
 - `src/db/pool.js` 增加 `dateStrings: true`，并在测试中确认 pool 配置不会把 MariaDB 日期列直接转为 JS `Date`。
@@ -473,7 +473,7 @@ npm test -- test/message-sql.test.js test/message-repository.test.js
 # pass 9
 # fail 7
 # failing reasons:
-# - ORDER BY 缺少 ID DESC
+# - ORDER BY 缺少 DEMO_ID DESC
 # - page='2abc' 被解析为 2
 # - LIKE SQL 缺少 ESCAPE '\\'
 # - 非 string title 调用 .trim() 抛错
@@ -1078,4 +1078,75 @@ rg -n "(BPMT_OAUTH_CLIENT_SECRET|BPMT_API_APP_SECRET|DB_PASSWORD|access_token|cl
 - Docker 内访问宿主机服务的主机名与 Docker Desktop / Linux Docker / Compose 网络有关。本机验证使用 `docker.for.mac.localhost`；其他环境可使用 `host.docker.internal` 或 Compose 服务名。
 - `BPMT_BASE_URL` 是浏览器可访问 BPMT 的外部地址；`BPMT_SERVER_BASE_URL` 是 demo 服务端可访问 BPMT token/userinfo 的内部地址。未配置 `BPMT_SERVER_BASE_URL` 时默认复用 `BPMT_BASE_URL`。
 - 本 demo 不实现 OIDC、refresh token、跨系统单点登出、附件、评论或复杂角色权限。
+- 本归档不包含真实 client secret、BPMT API app secret、授权码、访问令牌、数据库密码或本机专用凭据。
+
+## Task 11 用户目标
+
+根据最终代码复审意见收口字段命名问题：`DEMO_MESSAGE` 表内字段也必须符合本项目 `DEMO_` 前缀约定，不能只做到表名带前缀。
+
+## Task 11 Codex 任务提示词
+
+```text
+最终复审发现 DEMO_MESSAGE 的字段仍为 ID、TITLE、CONTENT、CREATOR_USERID、CREATE_TIME、UPDATE_TIME。
+
+请修复：
+1. 表结构字段统一改为 DEMO_ID、DEMO_TITLE、DEMO_CONTENT、DEMO_CREATOR_USERID、DEMO_CREATE_TIME、DEMO_UPDATE_TIME。
+2. SQL、repository 行映射、单元测试、设计文档和提示词归档同步改为 DEMO_* 字段。
+3. setup 脚本在已有动态表定义不一致时，应通过 BPMT API 读取并更新动态表定义后再 DDL 同步。
+4. 在本机重新执行 setup，确认物理表字段真实落成 DEMO_*。
+5. 重新执行 npm test、Docker 构建和 Docker 版浏览器 CRUD 验证。
+6. 不写入真实 client_secret、BPMT API app secret、授权 code、access token、密码或数据库凭据。
+```
+
+## Task 11 修改文件
+
+- `README.md`
+- `scripts/setup.js`
+- `src/bpmt/api.js`
+- `src/messages/repository.js`
+- `src/messages/sql.js`
+- `src/setup/tableDefinition.js`
+- `test/bpmt-api.test.js`
+- `test/message-repository.test.js`
+- `test/message-sql.test.js`
+- `test/table-definition.test.js`
+- `docs/superpowers/specs/2026-05-04-message-registry-design.md`
+- `docs/superpowers/plans/2026-05-04-message-registry-implementation.md`
+- `docs/codex/prompts/2026-05-04-03-message-registry-implementation.md`
+
+## Task 11 验证命令
+
+```bash
+npm run setup
+node --input-type=module # 查询 information_schema.COLUMNS，确认 DEMO_MESSAGE 字段
+npm test
+docker build -t bpmt-oauth-demo:local .
+docker run --rm --name bpmt-oauth-demo-verify --env-file .env \
+  -e BPMT_SERVER_BASE_URL=http://docker.for.mac.localhost \
+  -e BPMT_API_BASE_URL=http://docker.for.mac.localhost/api \
+  -e DB_HOST=docker.for.mac.localhost \
+  -p 81:81 bpmt-oauth-demo:local
+rg -n "(BPMT_OAUTH_CLIENT_SECRET|BPMT_API_APP_SECRET|DB_PASSWORD|access_token|client_secret)=[^<\\s][^\\s]*" . --glob '!node_modules/**' --glob '!.env' --glob '!package-lock.json'
+docker ps --filter name=bpmt-oauth-demo-verify
+lsof -iTCP:81 -sTCP:LISTEN
+```
+
+## Task 11 结果摘要
+
+- 已将 `DEMO_MESSAGE_TABLE` 字段统一改为 `DEMO_ID`、`DEMO_TITLE`、`DEMO_CONTENT`、`DEMO_CREATOR_USERID`、`DEMO_CREATE_TIME`、`DEMO_UPDATE_TIME`。
+- 已同步更新留言 SQL、repository 行映射、字段相关测试和中文设计/计划文档。
+- 已为 BPMT API 客户端新增 `getDynamicTable(...)` 和 `updateDynamicTable(...)`，用于读取和更新动态表定义。
+- `scripts/setup.js` 已支持表已存在时比较字段定义：按字段名、类型、长度、主键和必填属性判断，一致则直接 DDL 同步，不一致则先更新 BPMT 动态表定义，再 DDL 同步。
+- 本机此前存在空的旧字段测试表；确认记录数为 `0` 且字段仍为旧命名后，已做一次受保护清理，再通过 BPMT API 重新创建。
+- `npm run setup` 通过；重新创建时输出 `DEMO_MESSAGE 已创建`，再次执行时输出 `DEMO_MESSAGE 已存在，定义一致，执行 DDL 同步`。
+- `information_schema.COLUMNS` 确认物理字段为 `DEMO_ID`、`DEMO_TITLE`、`DEMO_CONTENT`、`DEMO_CREATOR_USERID`、`DEMO_CREATE_TIME`、`DEMO_UPDATE_TIME`，其中 `DEMO_ID` 为主键。
+- `npm test` 通过，`65/65`。
+- `docker build -t bpmt-oauth-demo:local .` 通过。
+- Docker 运行形态浏览器验证通过：打开 `http://localhost:81/` 后进入已登录留言首页；新增 `DEMO 字段 Docker 验证留言`，查看完整内容，编辑为 `DEMO 字段 Docker 验证留言-已编辑`，删除后列表回到 `暂无留言`。
+- 浏览器控制台未发现 error 或 warn。
+
+## Task 11 已知限制
+
+- 已有生产数据的旧字段表不能直接按本次本机清理方式处理；真实迁移需要单独设计数据迁移脚本和停机/回滚策略。
+- 本机 Docker 验证继续使用 `docker.for.mac.localhost` 作为容器访问宿主机 BPMT、API 和 MariaDB 的内部地址；其他环境需按网络形态调整。
 - 本归档不包含真实 client secret、BPMT API app secret、授权码、访问令牌、数据库密码或本机专用凭据。

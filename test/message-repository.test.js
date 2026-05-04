@@ -20,12 +20,12 @@ function createFakePool(responses) {
 
 function createRow(overrides = {}) {
   return {
-    ID: 'uuid-1',
-    TITLE: '标题',
-    CONTENT: '内容',
-    CREATOR_USERID: 'admin',
-    CREATE_TIME: '2026-05-04 09:30:00',
-    UPDATE_TIME: '2026-05-04 10:00:00',
+    DEMO_ID: 'uuid-1',
+    DEMO_TITLE: '标题',
+    DEMO_CONTENT: '内容',
+    DEMO_CREATOR_USERID: 'admin',
+    DEMO_CREATE_TIME: '2026-05-04 09:30:00',
+    DEMO_UPDATE_TIME: '2026-05-04 10:00:00',
     ...overrides
   };
 }
@@ -44,8 +44,8 @@ test('list executes count and list queries and maps paginated rows', async () =>
   const pool = createFakePool([
     [[{ total: 2 }]],
     [[
-      createRow({ ID: 'uuid-2', TITLE: '第二条' }),
-      createRow({ ID: 'uuid-1', TITLE: '第一条' })
+      createRow({ DEMO_ID: 'uuid-2', DEMO_TITLE: '第二条' }),
+      createRow({ DEMO_ID: 'uuid-1', DEMO_TITLE: '第一条' })
     ]]
   ]);
   const repo = createMessageRepository(pool);
@@ -54,7 +54,7 @@ test('list executes count and list queries and maps paginated rows', async () =>
 
   assert.equal(pool.calls.length, 2);
   assert.match(pool.calls[0].sql, /COUNT\(\*\) AS total/);
-  assert.match(pool.calls[1].sql, /ORDER BY CREATE_TIME DESC, ID DESC/);
+  assert.match(pool.calls[1].sql, /ORDER BY DEMO_CREATE_TIME DESC, DEMO_ID DESC/);
   assert.deepEqual(pool.calls[0].args, ['%条%', 'admin']);
   assert.deepEqual(pool.calls[1].args, ['%条%', 'admin', 1, 1]);
   assert.deepEqual(result, {
@@ -88,14 +88,14 @@ test('findById returns null when no row is found', async () => {
   const repo = createMessageRepository(pool);
 
   assert.equal(await repo.findById('missing-id'), null);
-  assert.match(pool.calls[0].sql, /WHERE ID = \?/);
+  assert.match(pool.calls[0].sql, /WHERE DEMO_ID = \?/);
   assert.deepEqual(pool.calls[0].args, ['missing-id']);
 });
 
 test('insert writes and reads back without depending on dynamic this binding', async () => {
   const pool = createFakePool([
     [{ affectedRows: 1 }],
-    [[createRow({ ID: 'uuid-new', TITLE: '新留言' })]]
+    [[createRow({ DEMO_ID: 'uuid-new', DEMO_TITLE: '新留言' })]]
   ]);
   const { insert } = createMessageRepository(pool);
 
@@ -108,7 +108,7 @@ test('insert writes and reads back without depending on dynamic this binding', a
   });
 
   assert.match(pool.calls[0].sql, /INSERT INTO DEMO_MESSAGE/);
-  assert.match(pool.calls[1].sql, /WHERE ID = \?/);
+  assert.match(pool.calls[1].sql, /WHERE DEMO_ID = \?/);
   assert.deepEqual(pool.calls[1].args, ['uuid-new']);
   assert.equal(result.id, 'uuid-new');
   assert.equal(result.title, '新留言');
@@ -117,7 +117,7 @@ test('insert writes and reads back without depending on dynamic this binding', a
 test('update writes and reads back without depending on dynamic this binding', async () => {
   const pool = createFakePool([
     [{ affectedRows: 1 }],
-    [[createRow({ ID: 'uuid-1', TITLE: '更新后' })]]
+    [[createRow({ DEMO_ID: 'uuid-1', DEMO_TITLE: '更新后' })]]
   ]);
   const { update } = createMessageRepository(pool);
 
@@ -129,7 +129,7 @@ test('update writes and reads back without depending on dynamic this binding', a
   });
 
   assert.match(pool.calls[0].sql, /UPDATE DEMO_MESSAGE/);
-  assert.match(pool.calls[1].sql, /WHERE ID = \?/);
+  assert.match(pool.calls[1].sql, /WHERE DEMO_ID = \?/);
   assert.deepEqual(pool.calls[1].args, ['uuid-1']);
   assert.equal(result.id, 'uuid-1');
   assert.equal(result.title, '更新后');

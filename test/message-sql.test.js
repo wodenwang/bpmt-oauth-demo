@@ -13,9 +13,9 @@ import {
 test('buildListMessagesQuery uses filters, limit, offset and parameter args', () => {
   const query = buildListMessagesQuery({ title: '测试', creatorUserid: 'admin', page: 2, pageSize: 20 });
   assert.match(query.sql, /FROM DEMO_MESSAGE/);
-  assert.match(query.sql, /TITLE LIKE \?/);
-  assert.match(query.sql, /CREATOR_USERID = \?/);
-  assert.match(query.sql, /ORDER BY CREATE_TIME DESC, ID DESC/);
+  assert.match(query.sql, /DEMO_TITLE LIKE \?/);
+  assert.match(query.sql, /DEMO_CREATOR_USERID = \?/);
+  assert.match(query.sql, /ORDER BY DEMO_CREATE_TIME DESC, DEMO_ID DESC/);
   assert.deepEqual(query.args, ['%测试%', 'admin', 20, 20]);
 });
 
@@ -74,13 +74,13 @@ test('buildListMessagesQuery clamps strict pageSize values to 100', () => {
 
 test('buildListMessagesQuery escapes LIKE wildcard characters for substring search', () => {
   const query = buildListMessagesQuery({ title: '100%_\\abc' });
-  assert.ok(query.sql.includes("TITLE LIKE ? ESCAPE '\\\\'"));
+  assert.ok(query.sql.includes("DEMO_TITLE LIKE ? ESCAPE '\\\\'"));
   assert.deepEqual(query.args, ['%100\\%\\_\\\\abc%', 20, 0]);
 });
 
 test('buildListMessagesQuery ignores non-string filters safely', () => {
   const query = buildListMessagesQuery({ title: 123, creatorUserid: { id: 'admin' } });
-  assert.doesNotMatch(query.sql, /TITLE LIKE/);
-  assert.doesNotMatch(query.sql, /CREATOR_USERID =/);
+  assert.doesNotMatch(query.sql, /DEMO_TITLE LIKE/);
+  assert.doesNotMatch(query.sql, /DEMO_CREATOR_USERID =/);
   assert.deepEqual(query.args, [20, 0]);
 });

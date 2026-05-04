@@ -74,21 +74,21 @@ OAuth 必须严格遵守上游 BPMT 授权码登录流程：
 
 | 字段名 | BPMT 类型 | 约束 | 说明 |
 | --- | --- | --- | --- |
-| `ID` | `String(36)` | 主键，必填 | 服务端生成 UUID |
-| `TITLE` | `String(200)` | 必填 | 留言标题 |
-| `CONTENT` | `Clob` | 必填 | 留言内容 |
-| `CREATOR_USERID` | `String(64)` | 必填 | 创建人，取当前 OAuth userinfo 的 `userid` |
-| `CREATE_TIME` | `Date` | 必填 | 创建时间 |
-| `UPDATE_TIME` | `Date` | 必填 | 更新时间 |
+| `DEMO_ID` | `String(36)` | 主键，必填 | 服务端生成 UUID |
+| `DEMO_TITLE` | `String(200)` | 必填 | 留言标题 |
+| `DEMO_CONTENT` | `Clob` | 必填 | 留言内容 |
+| `DEMO_CREATOR_USERID` | `String(64)` | 必填 | 创建人，取当前 OAuth userinfo 的 `userid` |
+| `DEMO_CREATE_TIME` | `Date` | 必填 | 创建时间 |
+| `DEMO_UPDATE_TIME` | `Date` | 必填 | 更新时间 |
 
-运行期查询默认按 `CREATE_TIME desc` 排序，默认分页大小为 20 条。
+运行期查询默认按 `DEMO_CREATE_TIME desc` 排序，默认分页大小为 20 条。
 
 ## 权限规则
 
 - 所有已登录 BPMT 且有第三方系统权限的用户都可以查看全部留言。
 - 只有留言创建人可以编辑和删除自己的留言。
-- 新增留言时，`CREATOR_USERID` 必须由服务端从 session 写入，浏览器提交值无效。
-- 编辑和删除时，服务端必须用数据库中的 `CREATOR_USERID` 与当前 session `userid` 比对。
+- 新增留言时，`DEMO_CREATOR_USERID` 必须由服务端从 session 写入，浏览器提交值无效。
+- 编辑和删除时，服务端必须用数据库中的 `DEMO_CREATOR_USERID` 与当前 session `userid` 比对。
 - 非创建人尝试编辑或删除时，返回明确无权限提示，不执行数据库写操作。
 
 ## 页面设计

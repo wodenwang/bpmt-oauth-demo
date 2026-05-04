@@ -30,7 +30,7 @@ test('createDynamicTable posts signed request to BPMT API', async () => {
   assert.equal(calls[0].options.headers['X-BPMT-App-Key'], 'bpmt-api');
   assert.equal(
     calls[0].options.headers['X-BPMT-Signature'],
-    'faf2c8c2dce79b8fac84a307c5db6efb505864e6d3b235486b1c449115f18cec'
+    '4a4466865aa75cc2ae75129a514839882254730c8ec743a1f95f8729c4d7f4d1'
   );
   assert.equal(JSON.parse(calls[0].options.body).name, 'DEMO_MESSAGE');
 });
@@ -60,6 +60,54 @@ test('syncDynamicTableDdl posts signed request using public canonical path', asy
     calls[0].options.headers['X-BPMT-Signature'],
     'c0e62d244495ce6aface2e0cad6af53e9dc94b0c569114d8fc03d45521719cfa'
   );
+});
+
+test('getDynamicTable gets signed table metadata', async () => {
+  const calls = [];
+  const client = createBpmtApiClient({
+    baseUrl: 'http://127.0.0.1/api',
+    appKey: 'bpmt-api',
+    appSecret: 'api-secret',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ success: true, data: DEMO_MESSAGE_TABLE })
+      };
+    },
+    now: () => 1777867200,
+    nonce: () => 'nonce-1'
+  });
+
+  const result = await client.getDynamicTable('DEMO_MESSAGE');
+  assert.equal(result.data.name, 'DEMO_MESSAGE');
+  assert.equal(calls[0].url, 'http://127.0.0.1/api/v1/dynamic-tables/DEMO_MESSAGE');
+  assert.equal(calls[0].options.method, 'GET');
+});
+
+test('updateDynamicTable puts signed table definition before DDL sync', async () => {
+  const calls = [];
+  const client = createBpmtApiClient({
+    baseUrl: 'http://127.0.0.1/api',
+    appKey: 'bpmt-api',
+    appSecret: 'api-secret',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ success: true, data: { name: 'DEMO_MESSAGE' } })
+      };
+    },
+    now: () => 1777867200,
+    nonce: () => 'nonce-1'
+  });
+
+  await client.updateDynamicTable('DEMO_MESSAGE', DEMO_MESSAGE_TABLE);
+  assert.equal(calls[0].url, 'http://127.0.0.1/api/v1/dynamic-tables/DEMO_MESSAGE');
+  assert.equal(calls[0].options.method, 'PUT');
+  assert.equal(JSON.parse(calls[0].options.body).columns[0].name, 'DEMO_ID');
 });
 
 test('createDynamicTable treats existing table conflict as already initialized', async () => {

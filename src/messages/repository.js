@@ -10,12 +10,12 @@ import {
 
 function mapRow(row) {
   return {
-    id: row.ID,
-    title: row.TITLE,
-    content: row.CONTENT,
-    creatorUserid: row.CREATOR_USERID,
-    createTime: row.CREATE_TIME,
-    updateTime: row.UPDATE_TIME
+    id: row.DEMO_ID,
+    title: row.DEMO_TITLE,
+    content: row.DEMO_CONTENT,
+    creatorUserid: row.DEMO_CREATOR_USERID,
+    createTime: row.DEMO_CREATE_TIME,
+    updateTime: row.DEMO_UPDATE_TIME
   };
 }
 
