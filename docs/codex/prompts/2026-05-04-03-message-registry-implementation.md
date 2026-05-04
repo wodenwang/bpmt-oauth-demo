@@ -626,3 +626,86 @@ npm test
 # tests 40
 # pass 40
 ```
+
+## Task 6 用户目标
+
+实现 BPMT OAuth 授权码登录模块，只交付 OAuth URL 构造、state 校验、token 换取、userinfo 获取、本地 session 工具和认证路由；不实现后续 Express 应用入口、留言路由、EJS 页面或 Docker。
+
+## Task 6 Codex 任务提示词
+
+```text
+你是 Task 6 的实现代理。请在隔离 worktree 中直接编辑文件、运行测试并提交。
+
+要求：
+1. 只实现 Task 6，不实现 Task 7/8 的 Express 应用、留言路由、EJS 页面或 Docker。
+2. 遵守 AGENTS.md，文案和文档使用中文，不能写入真实 client_secret、BPMT_API_APP_SECRET、授权 code、access_token、密码或数据库凭据。
+3. 使用 TDD：先写 `test/oauth.test.js` 并确认失败，再实现 `src/auth/oauth.js`、`src/auth/session.js`、`src/auth/routes.js`。
+4. `buildAuthorizeUrl(config, state)` 使用 `config.bpmtBaseUrl` 构造 `/oauth/authorize`，参数包含 `response_type=code`、`client_id`、`redirect_uri`、`state`。
+5. `verifyState(expectedState, actualState)` 对缺失或不匹配抛出 `status=400` 的中文安全错误：`OAuth state 校验失败，请重新登录`。
+6. `exchangeCodeForToken({ config, code, fetchImpl = fetch })` 使用表单 POST `/oauth/token`，并校验响应至少包含 `access_token`。
+7. `fetchUserInfo({ config, accessToken, fetchImpl = fetch })` 使用 Bearer token GET `/oauth/userinfo`，并校验响应至少包含 `userid`。
+8. OAuth HTTP 错误必须抛出带 HTTP 状态码的中文安全错误，错误信息不能泄露密钥、授权码、访问令牌或响应原文中的敏感值。
+9. `parseResponse` 先读取 `text()` 再 `JSON.parse`，不要先 `json()` 再 `text()`。
+10. session 只能保存 `userid`、`name`、`group`、`role`，不能保存 BPMT `access_token`。
+11. `createAuthRouter({ express, config })` 实现 `GET /login`、`GET /oauth/callback`、`POST /logout`。
+12. 最终运行 `npm test -- test/oauth.test.js`、`npm test` 和 `git status --short --branch`。
+```
+
+## Task 6 修改文件
+
+- `src/auth/oauth.js`
+- `src/auth/session.js`
+- `src/auth/routes.js`
+- `test/oauth.test.js`
+- `docs/codex/prompts/2026-05-04-03-message-registry-implementation.md`
+
+## Task 6 验证命令
+
+Task 6 按 TDD 顺序执行的关键验证命令：
+
+```bash
+npm test -- test/oauth.test.js
+npm test
+git status --short --branch
+```
+
+RED 阶段验证结果：
+
+```text
+npm test -- test/oauth.test.js
+# fail 1
+# reason: Error [ERR_MODULE_NOT_FOUND]: Cannot find module '.../src/auth/oauth.js'
+```
+
+GREEN 阶段验证结果：
+
+```text
+npm test -- test/oauth.test.js
+# tests 9
+# pass 9
+```
+
+最终验证结果：
+
+```text
+npm test
+# tests 49
+# pass 49
+```
+
+## Task 6 结果摘要
+
+- 已新增 `src/auth/oauth.js`，实现 BPMT 授权地址构造、OAuth state 校验、授权码换 token 和 Bearer token 获取用户信息。
+- 已将 OAuth 响应解析统一为先读取 `response.text()`，再按需 `JSON.parse`，避免 fake response 或真实响应兼容问题。
+- 已对 OAuth HTTP 错误输出中文安全错误，只包含调用阶段和 HTTP 状态码，不拼接响应原文，避免泄露密钥、授权码或访问令牌。
+- 已对 token 和 userinfo 响应做必要字段校验：token 至少需要 `access_token`，userinfo 至少需要 `userid`。
+- 已新增 `src/auth/session.js`，实现 `currentUser`、`saveUserSession`、`clearUserSession`、`requireLogin`；本地 session 只保存 `userid`、`name`、`group`、`role`。
+- 已新增 `src/auth/routes.js`，实现 `GET /login` 生成并保存 state 后跳转 BPMT，`GET /oauth/callback` 完成 state 校验、token 换取、userinfo 获取和本地登录态写入，`POST /logout` 清理本地 session。
+- 已新增 `test/oauth.test.js`，覆盖授权 URL、state 成功和失败、token form body、userinfo bearer、HTTP 错误脱敏、必要字段校验、session 不保存 token、`requireLogin` 和 callback 成功路径。
+
+## Task 6 已知限制
+
+- Task 6 只实现认证模块和单元测试，没有实现 Express 应用入口、留言路由、EJS 页面、Docker 镜像或浏览器端 OAuth 联调。
+- 单元测试使用 fake `fetch` 和测试 session，不访问真实 BPMT 实例，不读取 `.codex/project-record.local.md`。
+- 测试中出现的 `client-secret`、`code-1`、`token-1` 均为占位测试值，不是真实 OAuth 密钥、授权码或访问令牌。
+- 本归档不包含真实 client secret、BPMT API app secret、授权码、访问令牌、数据库密码或本机专用凭据。
