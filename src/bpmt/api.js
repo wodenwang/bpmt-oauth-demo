@@ -15,6 +15,22 @@ async function readJson(response) {
   }
 }
 
+function redactSecret(value, secret) {
+  const text = String(value);
+  if (!secret) return text;
+  return text.split(secret).join('<redacted>');
+}
+
+function formatSafeDiagnostics(payload, appSecret) {
+  const diagnostics = [];
+  for (const field of ['code', 'error', 'message']) {
+    const value = payload?.[field];
+    if (value === undefined || value === null || value === '') continue;
+    diagnostics.push(`${field}=${redactSecret(value, appSecret)}`);
+  }
+  return diagnostics.join(' ');
+}
+
 export function createBpmtApiClient({ baseUrl, appKey, appSecret, fetchImpl = fetch, now, nonce }) {
   async function requestJson({ method, publicPath, bodyObject }) {
     const body = bodyObject ? JSON.stringify(bodyObject) : '';
@@ -42,7 +58,14 @@ export function createBpmtApiClient({ baseUrl, appKey, appSecret, fetchImpl = fe
     const payload = await readJson(response);
 
     if (!response.ok) {
-      const error = new Error(`BPMT API 调用失败: ${method} ${publicPath} HTTP ${response.status}`);
+      const safeDiagnostics = formatSafeDiagnostics(payload, appSecret);
+      const message = [
+        `BPMT API 调用失败: ${method} ${publicPath} HTTP ${response.status}`,
+        safeDiagnostics
+      ]
+        .filter(Boolean)
+        .join(' ');
+      const error = new Error(message);
       error.status = response.status;
       error.payload = payload;
       throw error;

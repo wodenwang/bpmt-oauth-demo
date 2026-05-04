@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { loadConfig, redactConfig } from '../src/config.js';
 import { createBpmtApiClient } from '../src/bpmt/api.js';
 import { DEMO_MESSAGE_TABLE } from '../src/setup/tableDefinition.js';
@@ -6,7 +7,7 @@ async function main() {
   const config = loadConfig();
   const client = createBpmtApiClient(config.bpmtApi);
   console.log('开始初始化 BPMT demo 表结构');
-  console.log(JSON.stringify(redactConfig(config).bpmtApi));
+  console.log(`BPMT API 配置：${JSON.stringify(redactConfig(config).bpmtApi)}`);
 
   const createResult = await client.createDynamicTable(DEMO_MESSAGE_TABLE);
   if (createResult.alreadyExists) {

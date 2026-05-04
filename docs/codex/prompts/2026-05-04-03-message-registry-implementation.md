@@ -228,7 +228,68 @@ npm test
 ## Task 3 已知限制
 
 - Task 3 单元测试使用 fake fetch，没有连接本机 BPMT 实例，也没有真实创建或同步 `DEMO_MESSAGE` 表。
-- `scripts/setup.js` 不自动加载 `.env`；当前只依赖调用进程已经提供的环境变量。
+- `scripts/setup.js` 已在后续代码质量复审中改为显式加载 `dotenv/config`；`src/config.js` 仍保持无 dotenv 顶层副作用。
 - `scripts/setup.js` 捕获异常后只打印 `error.message`，不会输出 `client_secret`、`BPMT_API_APP_SECRET`、授权码、访问令牌或数据库密码。
 - setup 命令只初始化 BPMT 动态表，不创建本地 MySQL 留言业务表，不实现 OAuth 登录、留言 CRUD 或页面。
+- 本归档不包含真实密钥、授权码、访问令牌、数据库密码或本机专用凭据。
+
+## Task 3 代码质量复审修复
+
+### 复审问题
+
+Task 3 初始提交后，代码质量审查指出以下问题需要修正：
+
+- HTTP 错误消息只包含 method、path 和 status，`scripts/setup.js` 只打印该 message，无法看到 BPMT 返回的安全诊断字段。
+- `test/bpmt-api.test.js` 未用 golden 签名锁住 `createDynamicTable(...)` 的 canonical path。
+- 缺少 `syncDynamicTableDdl('DEMO_MESSAGE')` 的 URL、method 和签名 golden 测试。
+- 缺少非 `409` HTTP 错误测试，未断言错误消息包含安全 payload 诊断且不包含 secret。
+- `scripts/setup.js` 作为 CLI 入口应显式加载 `dotenv/config`，但 `src/config.js` 不能恢复 dotenv 顶层副作用。
+- `scripts/setup.js` 脱敏配置输出需要中文前缀。
+
+### 修复内容
+
+- `test/bpmt-api.test.js` 新增 `X-BPMT-Signature` 精确断言，固定 `now=1777867200`、`nonce=nonce-1` 和测试假密钥 `api-secret`。
+- `createDynamicTable(...)` 的签名 golden 固定为 `faf2c8c2dce79b8fac84a307c5db6efb505864e6d3b235486b1c449115f18cec`，用于锁住 canonical path `/api/v1/dynamic-tables`。
+- 新增 `syncDynamicTableDdl('DEMO_MESSAGE')` 测试，断言 URL 为 `http://127.0.0.1/api/v1/dynamic-tables/DEMO_MESSAGE/ddl:sync`，method 为 `POST`，签名 golden 为 `c0e62d244495ce6aface2e0cad6af53e9dc94b0c569114d8fc03d45521719cfa`，用于锁住 canonical path `/api/v1/dynamic-tables/DEMO_MESSAGE/ddl:sync`。
+- 新增非 `409` 错误测试，断言 `error.status`，并确认 `error.message` 包含 `code`、`error`、`message` 三个安全诊断字段，同时不包含测试假密钥。
+- `src/bpmt/api.js` 新增安全诊断格式化，只从 payload 中提取 `code`、`error`、`message`，并对当前 app secret 做兜底脱敏。
+- `scripts/setup.js` 顶部新增 `import 'dotenv/config';`，让 CLI 入口支持后续 `.env` 用户路径。
+- `scripts/setup.js` 脱敏配置输出调整为 `BPMT API 配置：...`。
+
+### 复审修复验证
+
+RED 阶段验证结果：
+
+```text
+npm test -- test/bpmt-api.test.js
+# fail 1
+# failing test: createDynamicTable includes safe BPMT diagnostics for non-conflict errors
+# reason: error.message 缺少 INVALID_SIGNATURE
+```
+
+GREEN 阶段验证结果：
+
+```text
+npm test -- test/bpmt-api.test.js
+# tests 4
+# pass 4
+```
+
+最终验证结果：
+
+```text
+npm test -- test/bpmt-api.test.js
+# tests 4
+# pass 4
+
+npm test
+# tests 14
+# pass 14
+```
+
+### 复审修复限制
+
+- 本次修复仍不连接真实 BPMT 实例，HTTP 行为通过 fake fetch 单元测试验证。
+- 本次修复不修改 Task 2 的 `src/bpmt/signature.js`。
+- 测试中的 `api-secret` 是固定假值，不是真实 `BPMT_API_APP_SECRET`。
 - 本归档不包含真实密钥、授权码、访问令牌、数据库密码或本机专用凭据。
