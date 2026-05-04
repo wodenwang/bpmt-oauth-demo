@@ -1,12 +1,174 @@
 # bpmt-oauth-demo
 
-`bpmt-oauth-demo` 是用于验证 `bpmt-lite` OAuth 第三方鉴权登录能力的示例应用。应用通过 BPMT OAuth 授权码流程登录用户，在 demo 侧建立本地 session，并提供一个最小留言登记页面用于验证登录后的业务操作。
+`bpmt-oauth-demo` 是一个通过 Codex 构建的 `bpmt-lite` OAuth 第三方登录示例项目。它的重点不只是交付一个可运行 demo，也要保留完整、结构化的提示词过程，让读者能照着创建自己的 BPMT OAuth 集成工程。
 
-本项目严格遵照 BPMT OAuth 第三方登录流程：浏览器跳转到 BPMT `/oauth/authorize`，回调到 demo `/oauth/callback`，服务端使用授权码调用 `/oauth/token`，再用 Bearer token 调用 `/oauth/userinfo` 读取当前 BPMT 用户信息。OAuth 回调地址必须精确配置为：
+本项目严格遵照 BPMT OAuth 授权码流程：
+
+1. demo 把浏览器跳转到 BPMT `/oauth/authorize`。
+2. BPMT 完成登录、校验 `client_id`、精确匹配 `redirect_uri` 并检查第三方系统权限。
+3. BPMT 携带一次性 `code` 回跳 demo `/oauth/callback`。
+4. demo 服务端调用 `/oauth/token` 换取 `access_token` 和 `userid`。
+5. demo 服务端调用 `/oauth/userinfo` 读取 BPMT 用户信息。
+6. demo 建立自己的本地 session，并展示登录后的留言登记页面。
+
+当前登记回调地址必须精确保持为：
 
 ```text
 http://localhost:81/oauth/callback
 ```
+
+## Quick Start：Docker Compose 运行
+
+这条路径适合读者最快体验本 demo。Compose 只运行 `bpmt-oauth-demo` 应用本身，不启动 BPMT 或 MariaDB；你需要已有可访问的 BPMT 环境和 `bpmt` 数据库。
+
+前置条件：
+
+- BPMT 已在本机或局域网运行，浏览器可访问 `http://localhost`。
+- BPMT 后台已登记第三方系统，`client_id` 为 `bpmt-oauth-demo`。
+- BPMT 后台登记的回调地址精确为 `http://localhost:81/oauth/callback`。
+- 当前用户或角色已被分配第三方系统权限。
+- 已准备 BPMT API app key/secret，用于 `npm run setup` 初始化 `DEMO_MESSAGE` 动态表。
+- Docker 和 Docker Compose 可用。
+
+复制 Compose 参数模板：
+
+```bash
+cp compose.env.example .env
+```
+
+编辑 `.env`，至少替换这些占位符：
+
+```text
+SESSION_SECRET=<DEMO_SESSION_SECRET>
+BPMT_OAUTH_CLIENT_SECRET=<BPMT_OAUTH_CLIENT_SECRET>
+BPMT_API_APP_SECRET=<BPMT_API_APP_SECRET>
+DB_USER=<DB_USER>
+DB_PASSWORD=<DB_PASSWORD>
+```
+
+如果 BPMT、OpenAPI 和 MariaDB 都运行在宿主机，Docker Compose 推荐保持以下值：
+
+```text
+BPMT_BASE_URL=http://localhost
+BPMT_SERVER_BASE_URL=http://host.docker.internal
+BPMT_API_BASE_URL=http://host.docker.internal/api
+DB_HOST=host.docker.internal
+DEMO_HTTP_PORT=81
+```
+
+先初始化 demo 需要的 BPMT 动态表：
+
+```bash
+docker compose run --rm --build setup
+```
+
+启动应用：
+
+```bash
+docker compose up -d app
+```
+
+打开 demo：
+
+```text
+http://localhost:81
+```
+
+停止应用：
+
+```bash
+docker compose down
+```
+
+如果你的 BPMT 或 MariaDB 不在宿主机，请在 `.env` 中调整：
+
+| 变量 | 说明 |
+| --- | --- |
+| `BPMT_BASE_URL` | 浏览器访问 BPMT 的外部地址，用于生成 `/oauth/authorize` 跳转地址。 |
+| `BPMT_SERVER_BASE_URL` | demo 容器内访问 BPMT `/oauth/token` 和 `/oauth/userinfo` 的地址。 |
+| `BPMT_API_BASE_URL` | demo 容器内访问 BPMT OpenAPI 的地址，默认形如 `http://host.docker.internal/api`。 |
+| `DB_HOST` | demo 容器内访问 MariaDB 的主机名。 |
+| `DEMO_HTTP_PORT` | 宿主机暴露端口。默认必须是 `81`，除非你也同步修改 BPMT 后台登记的回调地址。 |
+
+## 用 Codex 复刻本项目
+
+读者创建自己的 BPMT OAuth 集成工程时，建议先把提示词写清楚，再让 Codex 分阶段实现。每一轮提示词都应包含：
+
+- **目标**：这一轮只完成什么，不做什么。
+- **依据**：优先查阅本仓库 `AGENTS.md`、上游 OAuth 文档、运行中的 BPMT 和已有实现。
+- **边界**：只使用 OAuth2 Authorization Code，不引入 OIDC、`id_token`、refresh token 或单点登出。
+- **环境**：BPMT 地址、回调地址、数据库名、端口、OpenAPI 地址和必要占位符。
+- **交付物**：明确要新增或修改的文件。
+- **验证命令**：写清每轮必须运行的测试、构建或浏览器验证。
+- **安全规则**：真实密钥只放本机 `.env` 或未跟踪文件，Git 文档只写占位符。
+- **归档要求**：每次有意义的实现或验证，都在 `docs/codex/prompts/` 新增记录。
+
+可复用提示词模板：
+
+```text
+你正在为 bpmt-lite 创建一个 OAuth 第三方登录 demo。
+
+目标：
+1. 本轮只完成 <阶段名称>。
+2. 严格遵守 BPMT OAuth 授权码流程：/oauth/authorize -> /oauth/token -> /oauth/userinfo。
+3. 不实现 OIDC、id_token、refresh token、密码模式或跨系统单点登出。
+
+环境：
+- BPMT 基础地址：http://localhost
+- demo 回调地址：http://localhost:81/oauth/callback
+- OAuth client_id：bpmt-oauth-demo
+- OAuth client_secret：<BPMT_OAUTH_CLIENT_SECRET>
+- BPMT API app key：bpmt-api
+- BPMT API app secret：<BPMT_API_APP_SECRET>
+- 数据库：bpmt
+
+交付：
+- 新增或修改：<文件列表>
+- 测试或验证：<命令列表>
+- 提示词归档：docs/codex/prompts/YYYY-MM-DD-NN-<name>.md
+
+安全：
+- 不把 client_secret、BPMT_API_APP_SECRET、授权 code、access_token、密码或数据库凭据写入浏览器代码、公开文档、Git 提交或日志。
+- 文档中统一使用占位符。
+```
+
+建议按这个顺序向 Codex 提交提示词：
+
+| 顺序 | 阶段 | 本轮提示词重点 | 典型验证 |
+| --- | --- | --- | --- |
+| 1 | 项目初始化 | 创建 `AGENTS.md`、提示词归档目录、基础 README，写明 OAuth 边界和安全规则。 | `git status --short --branch` |
+| 2 | 方案设计 | 让 Codex 阅读上游 OAuth 文档，输出只基于授权码流程的实现计划。 | 人工确认文档不含 OIDC/refresh token |
+| 3 | Node 项目骨架 | 建立 `package.json`、配置加载、`.env.example` 和配置单元测试。 | `npm test -- test/config.test.js` |
+| 4 | BPMT API 签名 | 实现 BPMT OpenAPI 签名、canonical string 和动态表定义。 | `npm test -- test/bpmt-signature.test.js test/table-definition.test.js` |
+| 5 | setup 初始化 | 实现 `npm run setup`，创建或同步 `DEMO_MESSAGE` 动态表。 | `npm test -- test/bpmt-api.test.js`，真实环境可跑 `npm run setup` |
+| 6 | 数据访问 | 实现留言 repository/service，创建人以服务端 OAuth `userid` 为准。 | `npm test -- test/message-*.test.js` |
+| 7 | OAuth 登录 | 实现授权跳转、state 校验、callback、token 换取、userinfo 和本地 session。 | `npm test -- test/oauth.test.js` |
+| 8 | 页面和路由 | 实现 EJS 页面、留言 CRUD、错误页和基础样式。 | `npm test`，浏览器打开 `http://localhost:81` |
+| 9 | Docker 封装 | 新增 Dockerfile、Compose、Compose 参数示例和 Quick Start。 | `docker compose --profile setup config`，`docker build -t bpmt-oauth-demo:local .` |
+| 10 | 真实联调 | 用本机 BPMT 完整走登录、留言新增、查看、编辑、删除和退出。 | 浏览器验证，必要时检查 BPMT/MariaDB 日志 |
+| 11 | 提交收口 | 更新 README 和 `docs/codex/prompts/`，确认无敏感信息后提交。 | `npm test`，敏感信息扫描，`git diff --check` |
+
+每一轮提示词归档建议使用下面结构：
+
+```markdown
+# YYYY-MM-DD NN 阶段名称
+
+## 用户目标
+
+## Codex 任务提示词
+
+## 环境假设
+
+## 修改文件
+
+## 验证命令
+
+## 结果摘要
+
+## 已知限制
+```
+
+本仓库已经把这些历史记录保存在 `docs/codex/prompts/`，其中 `2026-05-04-03-message-registry-implementation.md` 是滚动实现记录，适合当作更完整的复刻样例。
 
 ## 功能
 
@@ -27,41 +189,47 @@ http://localhost:81/oauth/callback
 
 ## 环境变量
 
-先复制示例配置，再按本机环境填写占位符：
+本地 Node 运行可从 `.env.example` 开始，Docker Compose 运行建议从 `compose.env.example` 开始。密钥请只写入本机 `.env` 或运行环境，不要提交到 Git。
 
 ```bash
 cp .env.example .env
 ```
 
-必要变量如下，密钥请只写入本机 `.env` 或运行环境，不要提交到 Git：
-
 | 变量 | 说明 |
 | --- | --- |
-| `NODE_ENV` | 运行环境，本地开发通常为 `development` |
-| `PORT` | demo 监听端口，默认 `81` |
-| `SESSION_SECRET` | demo 本地 session 签名密钥，使用本机私有值 |
-| `BPMT_BASE_URL` | 浏览器访问 BPMT 的外部基础地址，本机默认 `http://localhost` |
-| `BPMT_SERVER_BASE_URL` | 可选，demo 服务端访问 BPMT token/userinfo 的内部地址；不填时默认等于 `BPMT_BASE_URL` |
-| `BPMT_OAUTH_CLIENT_ID` | BPMT 登记的 OAuth 客户端标识，默认 `bpmt-oauth-demo` |
-| `BPMT_OAUTH_CLIENT_SECRET` | BPMT 生成的 OAuth 客户端密钥，使用 `<BPMT_OAUTH_CLIENT_SECRET>` 占位符替换 |
-| `BPMT_OAUTH_REDIRECT_URI` | 必须为 `http://localhost:81/oauth/callback` |
-| `BPMT_API_BASE_URL` | BPMT OpenAPI 基础地址，本机默认 `http://127.0.0.1/api` |
-| `BPMT_API_APP_KEY` | BPMT API app key，默认 `bpmt-api` |
-| `BPMT_API_APP_SECRET` | BPMT API app secret，使用 `<BPMT_API_APP_SECRET>` 占位符替换 |
-| `DB_HOST` | MariaDB 主机 |
-| `DB_PORT` | MariaDB 端口，默认 `3306` |
-| `DB_USER` | MariaDB 用户 |
-| `DB_PASSWORD` | MariaDB 密码，使用本机私有值 |
-| `DB_NAME` | MariaDB 数据库名，默认 `bpmt` |
+| `NODE_ENV` | 运行环境，本地开发通常为 `development`，Docker Compose 默认 `production`。 |
+| `PORT` | demo 容器内监听端口，默认 `81`。 |
+| `SESSION_SECRET` | demo 本地 session 签名密钥，使用本机私有值。 |
+| `BPMT_BASE_URL` | 浏览器访问 BPMT 的外部基础地址，本机默认 `http://localhost`。 |
+| `BPMT_SERVER_BASE_URL` | 可选，demo 服务端访问 BPMT token/userinfo 的内部地址；不填时默认等于 `BPMT_BASE_URL`。 |
+| `BPMT_OAUTH_CLIENT_ID` | BPMT 登记的 OAuth 客户端标识，默认 `bpmt-oauth-demo`。 |
+| `BPMT_OAUTH_CLIENT_SECRET` | BPMT 生成的 OAuth 客户端密钥，使用 `<BPMT_OAUTH_CLIENT_SECRET>` 占位符替换。 |
+| `BPMT_OAUTH_REDIRECT_URI` | 必须与 BPMT 后台登记值精确一致，默认 `http://localhost:81/oauth/callback`。 |
+| `BPMT_API_BASE_URL` | BPMT OpenAPI 基础地址，本机 Node 运行默认 `http://127.0.0.1/api`，Compose 常用 `http://host.docker.internal/api`。 |
+| `BPMT_API_APP_KEY` | BPMT API app key，默认 `bpmt-api`。 |
+| `BPMT_API_APP_SECRET` | BPMT API app secret，使用 `<BPMT_API_APP_SECRET>` 占位符替换。 |
+| `DB_HOST` | MariaDB 主机，本机 Node 运行通常为 `localhost`，Compose 常用 `host.docker.internal`。 |
+| `DB_PORT` | MariaDB 端口，默认 `3306`。 |
+| `DB_USER` | MariaDB 用户。 |
+| `DB_PASSWORD` | MariaDB 密码，使用本机私有值。 |
+| `DB_NAME` | MariaDB 数据库名，默认 `bpmt`。 |
 
-`.env.example` 只包含占位符，不包含真实 `client_secret`、`BPMT_API_APP_SECRET`、授权码、访问令牌、密码或数据库凭据。
+`.env.example` 和 `compose.env.example` 只包含占位符，不包含真实 `client_secret`、`BPMT_API_APP_SECRET`、授权码、访问令牌、密码或数据库凭据。
 
 ## 初始化表结构
 
 初始化命令会读取服务端环境变量，使用 BPMT API 签名调用 OpenAPI 创建 `DEMO_MESSAGE` 动态表。如果表已存在，脚本会读取当前动态表定义；定义一致时直接执行 DDL 同步，定义不一致时先通过 BPMT API 更新动态表定义，再执行 DDL 同步。
 
+本地 Node 运行：
+
 ```bash
 npm run setup
+```
+
+Docker Compose 运行：
+
+```bash
+docker compose run --rm setup
 ```
 
 初始化前请确认：
@@ -75,14 +243,14 @@ npm run setup
 
 | 字段 | 说明 |
 | --- | --- |
-| `DEMO_ID` | 主键，服务端生成 UUID |
-| `DEMO_TITLE` | 留言标题 |
-| `DEMO_CONTENT` | 留言内容 |
-| `DEMO_CREATOR_USERID` | 创建人，取当前 BPMT OAuth 登录态的 `userid` |
-| `DEMO_CREATE_TIME` | 创建时间 |
-| `DEMO_UPDATE_TIME` | 更新时间 |
+| `DEMO_ID` | 主键，服务端生成 UUID。 |
+| `DEMO_TITLE` | 留言标题。 |
+| `DEMO_CONTENT` | 留言内容。 |
+| `DEMO_CREATOR_USERID` | 创建人，取当前 BPMT OAuth 登录态的 `userid`。 |
+| `DEMO_CREATE_TIME` | 创建时间。 |
+| `DEMO_UPDATE_TIME` | 更新时间。 |
 
-## 本地运行
+## 本地 Node 运行
 
 安装依赖：
 
@@ -120,15 +288,15 @@ http://localhost:81
 npm run dev
 ```
 
-## Docker 运行
+## Docker 镜像
 
-构建镜像：
+单独构建镜像：
 
 ```bash
 docker build -t bpmt-oauth-demo:local .
 ```
 
-使用 `.env` 运行容器：
+使用 `.env` 直接运行容器：
 
 ```bash
 docker run --rm --name bpmt-oauth-demo \
@@ -137,27 +305,7 @@ docker run --rm --name bpmt-oauth-demo \
   bpmt-oauth-demo:local
 ```
 
-如果容器内访问宿主机上的 BPMT 或 MariaDB，请按 Docker 环境调整服务端内部地址。本机 Docker Desktop 验证可使用 `docker.for.mac.localhost`：
-
-```bash
-docker run --rm --name bpmt-oauth-demo \
-  --env-file .env \
-  -e BPMT_SERVER_BASE_URL=http://docker.for.mac.localhost \
-  -e BPMT_API_BASE_URL=http://docker.for.mac.localhost/api \
-  -e DB_HOST=docker.for.mac.localhost \
-  -p 81:81 \
-  bpmt-oauth-demo:local
-```
-
-其中 `BPMT_BASE_URL` 仍建议保持浏览器可访问的 `http://localhost`，`BPMT_OAUTH_REDIRECT_URI` 仍必须保持 `http://localhost:81/oauth/callback`，并与 BPMT 后台登记值完全一致。
-
-不同 Docker Desktop 或 Linux Docker 环境的宿主机别名可能不同。如果 `docker.for.mac.localhost` 不可用，可改用 `host.docker.internal` 或 Compose 服务名，但要保持 `BPMT_BASE_URL` 是浏览器可访问地址，`BPMT_SERVER_BASE_URL` 是容器内可访问地址。
-
-容器内应用监听 `81` 端口，镜像启动命令为：
-
-```bash
-npm start
-```
+Docker Compose 是推荐运行方式，因为 `docker-compose.yml` 已经把容器访问宿主机服务的默认值配置为 `host.docker.internal`，并提供了一次性 `setup` profile。
 
 ## 安全提醒
 
@@ -173,6 +321,12 @@ npm start
 
 ```bash
 npm test
+```
+
+检查 Compose 配置：
+
+```bash
+docker compose --env-file compose.env.example --profile setup config
 ```
 
 构建 Docker 镜像：

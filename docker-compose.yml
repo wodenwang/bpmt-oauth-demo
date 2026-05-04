@@ -1,0 +1,43 @@
+name: bpmt-oauth-demo
+
+x-demo-environment: &demo-environment
+  NODE_ENV: ${NODE_ENV:-production}
+  PORT: 81
+  SESSION_SECRET: ${SESSION_SECRET:-}
+  BPMT_BASE_URL: ${BPMT_BASE_URL:-http://localhost}
+  BPMT_SERVER_BASE_URL: ${BPMT_SERVER_BASE_URL:-http://host.docker.internal}
+  BPMT_OAUTH_CLIENT_ID: ${BPMT_OAUTH_CLIENT_ID:-bpmt-oauth-demo}
+  BPMT_OAUTH_CLIENT_SECRET: ${BPMT_OAUTH_CLIENT_SECRET:-}
+  BPMT_OAUTH_REDIRECT_URI: ${BPMT_OAUTH_REDIRECT_URI:-http://localhost:81/oauth/callback}
+  BPMT_API_BASE_URL: ${BPMT_API_BASE_URL:-http://host.docker.internal/api}
+  BPMT_API_APP_KEY: ${BPMT_API_APP_KEY:-bpmt-api}
+  BPMT_API_APP_SECRET: ${BPMT_API_APP_SECRET:-}
+  DB_HOST: ${DB_HOST:-host.docker.internal}
+  DB_PORT: ${DB_PORT:-3306}
+  DB_USER: ${DB_USER:-}
+  DB_PASSWORD: ${DB_PASSWORD:-}
+  DB_NAME: ${DB_NAME:-bpmt}
+
+x-demo-image: &demo-image
+  image: ${BPMT_OAUTH_DEMO_IMAGE:-bpmt-oauth-demo:local}
+  build:
+    context: .
+    target: runtime
+  environment: *demo-environment
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
+services:
+  app:
+    <<: *demo-image
+    container_name: ${BPMT_OAUTH_DEMO_CONTAINER:-bpmt-oauth-demo}
+    ports:
+      - "${DEMO_HTTP_PORT:-81}:81"
+    restart: unless-stopped
+
+  setup:
+    <<: *demo-image
+    profiles:
+      - setup
+    command: ["npm", "run", "setup"]
+    restart: "no"
