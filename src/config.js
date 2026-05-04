@@ -1,5 +1,3 @@
-import 'dotenv/config';
-
 const REQUIRED_KEYS = [
   'SESSION_SECRET',
   'BPMT_BASE_URL',

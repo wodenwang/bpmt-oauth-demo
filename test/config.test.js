@@ -30,7 +30,16 @@ test('loadConfig parses required environment values', () => {
 
 test('loadConfig reports missing required values without leaking secrets', () => {
   const env = { ...baseEnv, BPMT_OAUTH_CLIENT_SECRET: '' };
-  assert.throws(() => loadConfig(env), /缺少必要环境变量: BPMT_OAUTH_CLIENT_SECRET/);
+  assert.throws(
+    () => loadConfig(env),
+    (error) => {
+      assert.match(error.message, /缺少必要环境变量: BPMT_OAUTH_CLIENT_SECRET/);
+      assert.doesNotMatch(error.message, /api-secret-value/);
+      assert.doesNotMatch(error.message, /db-password/);
+      assert.doesNotMatch(error.message, /test-session-secret/);
+      return true;
+    }
+  );
 });
 
 test('redactConfig removes secrets from diagnostic output', () => {
