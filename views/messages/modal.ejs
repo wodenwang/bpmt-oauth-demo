@@ -1,20 +1,13 @@
-<section>
-  <h1><%= mode === 'edit' ? '编辑留言' : '查看留言' %></h1>
-  <% if (mode === 'edit') { %>
-    <form method="post" action="/messages/<%= message.id %>/update">
-      <label>
-        标题
-        <input name="title" value="<%= message.title %>" required>
-      </label>
-      <label>
-        内容
-        <textarea name="content" required><%= message.content %></textarea>
-      </label>
-      <button type="submit">保存</button>
-    </form>
-  <% } else { %>
-    <p><%= message.title %></p>
-    <p><%= message.content %></p>
-    <p>创建人：<%= message.creatorUserid %></p>
-  <% } %>
-</section>
+<form method="post" action="<%= mode === 'create' ? '/messages' : mode === 'edit' ? `/messages/${message.id}/update` : '#' %>" class="modal-form">
+  <div class="modal-title"><%= mode === 'create' ? '新增留言' : mode === 'edit' ? '编辑留言' : '查看留言' %></div>
+  <label for="message-title">标题</label>
+  <input id="message-title" name="title" maxlength="200" value="<%= message?.title || '' %>" <%= mode === 'view' ? 'readonly' : '' %> required>
+  <label for="message-content">内容</label>
+  <textarea id="message-content" name="content" rows="8" <%= mode === 'view' ? 'readonly' : '' %> required><%= message?.content || '' %></textarea>
+  <div class="modal-actions">
+    <% if (mode !== 'view') { %>
+      <button type="submit" class="toolbar-button primary">保存</button>
+    <% } %>
+    <button type="button" class="toolbar-button" onclick="closeDialog()">关闭</button>
+  </div>
+</form>

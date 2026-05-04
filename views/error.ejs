@@ -4,10 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= title %></title>
+  <link rel="stylesheet" href="/static/styles/bpmt.css">
 </head>
 <body>
-  <h1>系统提示</h1>
-  <p>状态码：<%= status %></p>
-  <p><%= message %></p>
+  <main class="bpmt-page">
+    <section class="panel">
+      <div class="panel-title"><span>系统提示</span></div>
+      <div class="error-box">
+        <h1>系统提示</h1>
+        <p>状态码：<%= status %></p>
+        <p><%= message %></p>
+        <a class="toolbar-button primary" href="/">返回首页</a>
+      </div>
+    </section>
+  </main>
 </body>
 </html>

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
 import request from 'supertest';
+import ejs from 'ejs';
 import { createApp } from '../src/app.js';
 import { createMessageRouter } from '../src/messages/routes.js';
 
@@ -136,6 +137,56 @@ test('登录用户访问首页会解析筛选条件并渲染留言列表', async
   assert.match(response.text, /留言已新增/);
 });
 
+test('留言首页加载 BPMT 风格静态资源并按创建人控制行内操作', async () => {
+  const app = createLoggedInRouterApp({
+    service: {
+      async isReady() {
+        return true;
+      },
+      async list() {
+        return {
+          rows: [
+            {
+              id: 'message-own',
+              title: '自己标题',
+              content: '自己留言内容',
+              creatorUserid: 'admin',
+              createTime: '2026-05-04 09:30:00',
+              updateTime: '2026-05-04 09:40:00'
+            },
+            {
+              id: 'message-other',
+              title: '他人标题',
+              content: '他人留言内容',
+              creatorUserid: 'lisi',
+              createTime: '2026-05-04 10:30:00',
+              updateTime: '2026-05-04 10:40:00'
+            }
+          ],
+          total: 2,
+          page: 1,
+          pageSize: 20,
+          totalPages: 1
+        };
+      }
+    }
+  });
+
+  const response = await request(app).get('/');
+
+  assert.equal(response.status, 200);
+  assert.match(response.text, /\/static\/styles\/bpmt\.css/);
+  assert.match(response.text, /\/static\/scripts\/messages\.js/);
+  assert.match(response.text, /标题\(模糊\)/);
+  assert.match(response.text, /内容摘要/);
+  assert.match(response.text, /data-message-id="message-own" onclick="openEditDialog\(this\.dataset\.messageId\)"/);
+  assert.match(response.text, /data-message-id="message-own" onclick="deleteOne\(this\.dataset\.messageId\)"/);
+  assert.match(response.text, /name="ids" value="message-own"/);
+  assert.match(response.text, /value="message-other" disabled/);
+  assert.match(response.text, /disabled title="只能编辑自己创建的留言"/);
+  assert.match(response.text, /disabled title="只能删除自己创建的留言"/);
+});
+
 test('flash 只展示一次', async () => {
   const app = createTestApp({
     async create() {
@@ -174,6 +225,8 @@ test('DEMO_MESSAGE 未初始化时首页显示初始化提示且不查询列表'
   assert.equal(response.status, 200);
   assert.equal(listCalled, false);
   assert.match(response.text, /请先运行初始化命令/);
+  assert.match(response.text, /DEMO_MESSAGE/);
+  assert.match(response.text, /npm run setup/);
 });
 
 test('POST /messages 新增留言后设置 flash 并重定向首页', async () => {
@@ -294,6 +347,34 @@ test('GET /messages/:id 按 mode 渲染查看和编辑 modal', async () => {
   assert.match(viewResponse.text, /详情标题/);
   assert.equal(editResponse.status, 200);
   assert.match(editResponse.text, /编辑留言/);
+  assert.match(editResponse.text, /action="\/messages\/message-1\/update"/);
+  assert.doesNotMatch(editResponse.text, /readonly/);
+  assert.match(viewResponse.text, /readonly/);
+});
+
+test('留言 modal 支持新增、编辑、查看三种模式', async () => {
+  const createHtml = await ejs.renderFile('views/messages/modal.ejs', {
+    mode: 'create',
+    message: null
+  });
+  const editHtml = await ejs.renderFile('views/messages/modal.ejs', {
+    mode: 'edit',
+    message: { id: 'message-1', title: '编辑标题', content: '编辑内容', creatorUserid: 'admin' }
+  });
+  const viewHtml = await ejs.renderFile('views/messages/modal.ejs', {
+    mode: 'view',
+    message: { id: 'message-1', title: '查看标题', content: '查看内容', creatorUserid: 'admin' }
+  });
+
+  assert.match(createHtml, /新增留言/);
+  assert.match(createHtml, /action="\/messages"/);
+  assert.doesNotMatch(createHtml, /readonly/);
+  assert.match(editHtml, /编辑留言/);
+  assert.match(editHtml, /action="\/messages\/message-1\/update"/);
+  assert.doesNotMatch(editHtml, /readonly/);
+  assert.match(viewHtml, /查看留言/);
+  assert.match(viewHtml, /readonly/);
+  assert.doesNotMatch(viewHtml, /access_token|client_secret|BPMT_API_APP_SECRET/i);
 });
 
 test('业务错误保留 status 并进入错误页', async () => {
@@ -310,6 +391,7 @@ test('业务错误保留 status 并进入错误页', async () => {
   const response = await request(app).get('/messages/missing');
 
   assert.equal(response.status, 404);
+  assert.match(response.text, /\/static\/styles\/bpmt\.css/);
   assert.match(response.text, /留言不存在/);
 });
 

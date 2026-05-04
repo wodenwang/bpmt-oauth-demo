@@ -864,3 +864,88 @@ npm test
 - `views/layout.ejs` 当前作为基础模板归档，未引入额外 layout 中间件；页面视图自身保持完整 HTML，便于 Task 8 后续替换。
 - `src/server.js` 仅在运行时打印 `redactConfig(config)` 的脱敏结果，不输出真实密钥、授权码、访问令牌、密码或数据库凭据。
 - 本归档不包含真实 client secret、BPMT API app secret、授权码、访问令牌、数据库密码或本机专用凭据。
+
+## Task 8 用户目标
+
+实现 BPMT 风格页面和前端交互，只替换留言登记页面、弹窗、错误页、静态 CSS/JS 和必要测试，不做 Docker、README 或真实 BPMT 联调。页面需要适合作为 iframe 嵌入 BPMT，风格接近业务系统的灰色渐变面板、查询条件区、工具条、表格和分页条。
+
+## Task 8 Codex 任务提示词
+
+```text
+你是 Task 8 的实现代理。请在隔离 worktree 中直接编辑文件、运行测试并提交。
+
+要求：
+1. 只实现 Task 8，不做 Docker、README、真实 BPMT 联调。
+2. 全中文用户可见文案和文档；不写入真实 client_secret、BPMT_API_APP_SECRET、授权 code、access_token、密码或数据库凭据。
+3. 将 `views/messages/index.ejs` 替换为 BPMT 风格页面，包含顶部登录信息和退出按钮、面板标题“留言登记”、查询区、查询/重置按钮、表格、行内操作、新增/批量删除工具条、分页条、dialog 容器和隐藏 delete form。
+4. 查询区字段为标题(模糊)、创建者，并保留 pageSize hidden。
+5. 表格列为 checkbox、操作、标题、内容摘要、创建者、创建时间、更新时间。
+6. 只有当前登录用户是创建人时才允许勾选、编辑、删除；其他人的编辑/删除按钮 disabled，并有中文 title。
+7. 内容摘要长度受控，EJS 输出保持默认转义，不用未转义内容展示用户输入。
+8. setupRequired 时显示初始化提示，包含 `DEMO_MESSAGE` 和 `npm run setup`。
+9. `views/messages/modal.ejs` 支持 create/edit/view 三种 mode，create action `/messages`，edit action `/messages/:id/update`，view readonly，不展示 access token 或敏感信息。
+10. `views/error.ejs` 使用同一 BPMT 风格 CSS，显示系统提示和返回首页按钮。
+11. `public/scripts/messages.js` 实现 openCreateDialog、openViewDialog、openEditDialog、closeDialog、deleteOne、toggleAllRows、confirmBulkDelete，并挂到 window；删除和批量删除使用中文 confirm/alert。
+12. `public/styles/bpmt.css` 实现简洁灰色 BPMT 风格，注意 iframe 内自适应、按钮和单元格文本不溢出，移动端基本可用。
+13. 保持现有 Task 7 路由测试通过，并补充必要测试。
+14. 追加滚动归档 Task 8 内容。
+```
+
+## Task 8 修改文件
+
+- `views/messages/index.ejs`
+- `views/messages/modal.ejs`
+- `views/error.ejs`
+- `public/styles/bpmt.css`
+- `public/scripts/messages.js`
+- `test/message-routes.test.js`
+- `docs/codex/prompts/2026-05-04-03-message-registry-implementation.md`
+
+## Task 8 验证命令
+
+按 TDD 顺序执行的关键验证命令：
+
+```bash
+npm test -- test/message-routes.test.js
+npm test
+git status --short --branch
+```
+
+RED 阶段验证结果：
+
+```text
+npm test -- test/message-routes.test.js
+# tests 14
+# pass 10
+# fail 4
+# 失败点：首页缺少 BPMT 静态资源和权限态、modal 不支持 create/view readonly、错误页未加载统一 CSS。
+```
+
+GREEN 阶段验证结果：
+
+```text
+npm test -- test/message-routes.test.js
+# tests 14
+# pass 14
+```
+
+## Task 8 结果摘要
+
+- 已将留言首页替换为 BPMT 风格业务页面，包含顶部登录信息、退出 demo、灰色渐变面板标题、查询条件区、工具条、表格、分页条、dialog 容器和隐藏删除表单。
+- 查询区保留 `title`、`creatorUserid` 和隐藏 `pageSize`，重置按钮返回首页。
+- 表格列已调整为 checkbox、操作、标题、内容摘要、创建者、创建时间、更新时间。
+- 当前登录用户为创建人时可勾选、编辑和删除；非创建人记录不可勾选，编辑/删除按钮禁用并显示中文 `title`。
+- 内容摘要在模板中限制为 80 字符；标题、内容、创建者等用户输入仍使用 EJS 默认转义输出。
+- 初始化缺失时展示 `DEMO_MESSAGE` 和 `npm run setup` 提示，不查询留言列表。
+- 弹窗视图支持 create/edit/view 三种模式；新增提交到 `/messages`，编辑提交到 `/messages/:id/update`，查看模式为 readonly 且不展示敏感信息。
+- 错误页接入同一 `bpmt.css`，展示系统提示、状态码、错误信息和返回首页按钮。
+- 已新增 `public/scripts/messages.js`，实现新增、查看、编辑弹窗、关闭、单条删除、全选可删除行和批量删除确认。
+- 已新增 `public/styles/bpmt.css`，实现灰色 BPMT 风格、表格横向滚动、文本截断、按钮自适应和移动端基本布局。
+
+## Task 8 已知限制
+
+- 本任务只做页面和前端交互增强，没有修改 OAuth、留言 service、数据库、Docker 或 README。
+- 本任务没有做真实 BPMT iframe 嵌入视觉验收，也没有连接本机 BPMT 实例或 MariaDB。
+- 新增弹窗由前端内联 HTML 构造；查看和编辑弹窗通过 fetch 读取服务端 modal HTML。
+- 行内按钮的 record id 来自服务端记录，当前沿用已有留言 id 约束；用户可见标题和内容仍由 EJS 默认转义保护。
+- 本归档不包含真实 client secret、BPMT API app secret、授权码、访问令牌、数据库密码或本机专用凭据。

@@ -4,86 +4,115 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= title %></title>
+  <link rel="stylesheet" href="/static/styles/bpmt.css">
+  <script src="/static/scripts/messages.js" defer></script>
 </head>
 <body>
-  <header>
-    <h1>留言登记</h1>
-    <p>当前用户：<%= user.name || user.userid %></p>
-    <form method="post" action="/logout">
-      <button type="submit">退出登录</button>
-    </form>
-  </header>
-
-  <% if (flash) { %>
-    <p role="status"><%= flash.message %></p>
-  <% } %>
-
-  <form method="get" action="/">
-    <label>
-      标题
-      <input name="title" value="<%= filters.title %>">
-    </label>
-    <label>
-      创建人
-      <input name="creatorUserid" value="<%= filters.creatorUserid %>">
-    </label>
-    <label>
-      页码
-      <input name="page" value="<%= filters.page %>">
-    </label>
-    <label>
-      每页数量
-      <input name="pageSize" value="<%= filters.pageSize %>">
-    </label>
-    <button type="submit">查询</button>
-  </form>
-
-  <% if (setupRequired) { %>
-    <p>DEMO_MESSAGE 留言表尚未初始化，请先运行初始化命令：npm run setup</p>
-  <% } else { %>
-    <section>
-      <h2>新增留言</h2>
-      <form method="post" action="/messages">
-        <label>
-          标题
-          <input name="title" required>
-        </label>
-        <label>
-          内容
-          <textarea name="content" required></textarea>
-        </label>
-        <button type="submit">新增</button>
+  <main class="bpmt-page">
+    <div class="bpmt-topline">
+      <span>用户[<%= user.name || user.userid %>]已登录。</span>
+      <form method="post" action="/logout">
+        <button class="link-button" type="submit">退出 demo</button>
       </form>
+    </div>
+
+    <% if (flash) { %>
+      <div class="flash flash-<%= flash.type %>" role="status"><%= flash.message %></div>
+    <% } %>
+
+    <section class="panel">
+      <div class="panel-title"><span>留言登记</span></div>
+
+      <% if (setupRequired) { %>
+        <div class="error-box">
+          <h1>请先运行初始化命令</h1>
+          <p>当前数据库中未检测到 <code>DEMO_MESSAGE</code>。请在服务端执行 <code>npm run setup</code> 后刷新本页。</p>
+        </div>
+      <% } else { %>
+        <form class="query-grid" method="get" action="/">
+          <label for="filter-title">标题(模糊)</label>
+          <input id="filter-title" type="text" name="title" value="<%= filters.title %>">
+          <label for="filter-creator">创建者</label>
+          <input id="filter-creator" type="text" name="creatorUserid" value="<%= filters.creatorUserid %>">
+          <input type="hidden" name="pageSize" value="<%= result.pageSize %>">
+          <div class="query-actions">
+            <button type="submit" class="toolbar-button primary">查询</button>
+            <a class="toolbar-button" href="/">重置</a>
+          </div>
+        </form>
+
+        <form method="post" action="/messages/bulk-delete" onsubmit="return confirmBulkDelete()">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="checkbox-cell"><input type="checkbox" aria-label="全选可删除留言" onclick="toggleAllRows(this)"></th>
+                  <th class="ops-cell">操作</th>
+                  <th>标题</th>
+                  <th>内容摘要</th>
+                  <th>创建者</th>
+                  <th>创建时间</th>
+                  <th>更新时间</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (result.rows.length === 0) { %>
+                  <tr><td colspan="7" class="empty-cell">暂无留言</td></tr>
+                <% } %>
+                <% for (const row of result.rows) { %>
+                  <%
+                    const owned = row.creatorUserid === user.userid;
+                    const content = String(row.content || '');
+                    const summary = content.length > 80 ? `${content.slice(0, 80)}...` : content;
+                  %>
+                  <tr>
+                    <td class="checkbox-cell">
+                      <input type="checkbox" name="ids" value="<%= row.id %>" <%= owned ? '' : 'disabled' %>>
+                    </td>
+                    <td class="ops-cell">
+                      <button type="button" class="icon-button" data-message-id="<%= row.id %>" onclick="openViewDialog(this.dataset.messageId)">看</button>
+                      <% if (owned) { %>
+                        <button type="button" class="icon-button" data-message-id="<%= row.id %>" onclick="openEditDialog(this.dataset.messageId)">改</button>
+                        <button type="button" class="icon-button" data-message-id="<%= row.id %>" onclick="deleteOne(this.dataset.messageId)">删</button>
+                      <% } else { %>
+                        <button type="button" class="icon-button" disabled title="只能编辑自己创建的留言">改</button>
+                        <button type="button" class="icon-button" disabled title="只能删除自己创建的留言">删</button>
+                      <% } %>
+                    </td>
+                    <td class="text-cell"><%= row.title %></td>
+                    <td class="summary-cell"><%= summary %></td>
+                    <td class="text-cell"><%= row.creatorUserid %></td>
+                    <td class="time-cell"><%= row.createTime || '' %></td>
+                    <td class="time-cell"><%= row.updateTime || '' %></td>
+                  </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="bottom-toolbar">
+            <div class="toolbar-left">
+              <button type="button" class="toolbar-button primary" onclick="openCreateDialog()">新增</button>
+              <button type="submit" class="toolbar-button">批量删除</button>
+            </div>
+          </div>
+        </form>
+
+        <div class="pager">
+          <strong>【每页记录数：<%= result.pageSize %>】总页数/总记录数：<%= result.totalPages %>/<%= result.total %></strong>
+          <span>
+            <a href="/?title=<%= encodeURIComponent(filters.title) %>&creatorUserid=<%= encodeURIComponent(filters.creatorUserid) %>&page=1&pageSize=<%= result.pageSize %>">首页</a>
+            <a href="/?title=<%= encodeURIComponent(filters.title) %>&creatorUserid=<%= encodeURIComponent(filters.creatorUserid) %>&page=<%= Math.max(1, result.page - 1) %>&pageSize=<%= result.pageSize %>">上一页</a>
+            <em><%= result.page %></em>
+            <a href="/?title=<%= encodeURIComponent(filters.title) %>&creatorUserid=<%= encodeURIComponent(filters.creatorUserid) %>&page=<%= Math.min(result.totalPages, result.page + 1) %>&pageSize=<%= result.pageSize %>">下一页</a>
+            <a href="/?title=<%= encodeURIComponent(filters.title) %>&creatorUserid=<%= encodeURIComponent(filters.creatorUserid) %>&page=<%= result.totalPages %>&pageSize=<%= result.pageSize %>">末页</a>
+          </span>
+        </div>
+      <% } %>
     </section>
 
-    <form method="post" action="/messages/bulk-delete">
-      <table>
-        <thead>
-          <tr>
-            <th>选择</th>
-            <th>标题</th>
-            <th>内容</th>
-            <th>创建人</th>
-            <th>创建时间</th>
-            <th>更新时间</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% for (const row of result.rows) { %>
-            <tr>
-              <td><input type="checkbox" name="ids" value="<%= row.id %>"></td>
-              <td><%= row.title %></td>
-              <td><%= row.content %></td>
-              <td><%= row.creatorUserid %></td>
-              <td><%= row.createTime || '' %></td>
-              <td><%= row.updateTime || '' %></td>
-            </tr>
-          <% } %>
-        </tbody>
-      </table>
-      <p>共 <%= result.total %> 条，第 <%= result.page %> / <%= result.totalPages %> 页</p>
-      <button type="submit">删除选中</button>
-    </form>
-  <% } %>
+    <dialog id="message-dialog" class="message-dialog"></dialog>
+    <form id="delete-form" method="post" hidden></form>
+  </main>
 </body>
 </html>
