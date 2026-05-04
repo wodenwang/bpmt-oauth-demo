@@ -748,6 +748,32 @@ npm test
 - 已新增路由内 `regenerateSession(req)` Promise 包装，避免在 `saveUserSession(req, userInfo)` 前复用旧匿名 SID。
 - 已补充 callback 成功路径测试，使用中间件包装 `req.session.regenerate`，断言登录成功时 regenerate 被调用 1 次，且 callback 完成后仍能读取本地用户 session。
 - 已确认 `saveUserSession` 仍只保存 `userid`、`name`、`group`、`role`，不保存 BPMT `access_token`。
+
+## Task 7 审查后小修复
+
+Task 7 规格审查和代码质量审查均通过。质量审查建议补充两个显式回归用例，避免后续 UI 或路由重排时破坏登录保护和 flash 消费语义。本次补充：
+
+- 匿名用户访问留言详情、新增、更新、删除和批量删除路由时均重定向 `/login`。
+- POST 成功后的 flash 只在下一次首页访问展示一次，第二次访问不再展示。
+
+补充验证命令：
+
+```bash
+npm test -- test/message-routes.test.js
+npm test
+```
+
+补充验证结果：
+
+```text
+npm test -- test/message-routes.test.js
+# tests 12
+# pass 12
+
+npm test
+# tests 61
+# pass 61
+```
 - 本次修复不包含真实密钥、授权码、访问令牌、密码或数据库凭据。
 
 ## Task 7 用户目标

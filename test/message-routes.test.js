@@ -77,6 +77,23 @@ test('匿名用户访问首页会重定向到登录入口', async () => {
   assert.equal(response.headers.location, '/login');
 });
 
+test('匿名用户访问留言操作路由均重定向到登录入口', async () => {
+  const app = createAnonymousRouterApp();
+  const cases = [
+    request(app).get('/messages/message-1'),
+    request(app).post('/messages').type('form').send({ title: '标题', content: '内容' }),
+    request(app).post('/messages/message-1/update').type('form').send({ title: '标题', content: '内容' }),
+    request(app).post('/messages/message-1/delete'),
+    request(app).post('/messages/bulk-delete').type('form').send({ ids: 'message-1' })
+  ];
+
+  for (const pendingResponse of cases) {
+    const response = await pendingResponse;
+    assert.equal(response.status, 302);
+    assert.equal(response.headers.location, '/login');
+  }
+});
+
 test('登录用户访问首页会解析筛选条件并渲染留言列表', async () => {
   const calls = [];
   const app = createLoggedInRouterApp({
@@ -117,6 +134,26 @@ test('登录用户访问首页会解析筛选条件并渲染留言列表', async
   assert.match(response.text, /管理员/);
   assert.match(response.text, /任务标题/);
   assert.match(response.text, /留言已新增/);
+});
+
+test('flash 只展示一次', async () => {
+  const app = createTestApp({
+    async create() {
+      return { id: 'message-1' };
+    },
+    async list() {
+      return { rows: [], total: 0, page: 1, pageSize: 20, totalPages: 1 };
+    }
+  });
+  const agent = request.agent(app);
+  await agent.get('/test-login');
+
+  await agent.post('/messages').type('form').send({ title: '标题', content: '内容' });
+  const first = await agent.get('/');
+  const second = await agent.get('/');
+
+  assert.match(first.text, /留言已新增/);
+  assert.doesNotMatch(second.text, /留言已新增/);
 });
 
 test('DEMO_MESSAGE 未初始化时首页显示初始化提示且不查询列表', async () => {
