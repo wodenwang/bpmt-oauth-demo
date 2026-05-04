@@ -42,6 +42,17 @@ test('loadConfig reports missing required values without leaking secrets', () =>
   );
 });
 
+test('loadConfig rejects non-numeric port values', () => {
+  assert.throws(
+    () => loadConfig({ ...baseEnv, PORT: '81abc' }),
+    /环境变量 PORT 必须是有效端口/
+  );
+  assert.throws(
+    () => loadConfig({ ...baseEnv, DB_PORT: '3306x' }),
+    /环境变量 DB_PORT 必须是有效端口/
+  );
+});
+
 test('redactConfig removes secrets from diagnostic output', () => {
   const config = loadConfig(baseEnv);
   const redacted = redactConfig(config);

@@ -23,7 +23,12 @@ function requireValue(env, key) {
 }
 
 function parsePort(value, key) {
-  const port = Number.parseInt(value, 10);
+  const rawValue = String(value).trim();
+  if (!/^\d+$/.test(rawValue)) {
+    throw new Error(`环境变量 ${key} 必须是有效端口`);
+  }
+
+  const port = Number.parseInt(rawValue, 10);
   if (!Number.isInteger(port) || port <= 0 || port > 65535) {
     throw new Error(`环境变量 ${key} 必须是有效端口`);
   }
