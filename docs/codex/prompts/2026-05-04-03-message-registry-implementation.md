@@ -516,3 +516,90 @@ npm test
 - `createDbPool(...)` 测试只创建并关闭 mysql2 pool，不执行查询，不读取真实环境变量。
 - 本次修复不实现留言业务规则、路由、页面或 OAuth 流程。
 - 本归档不包含真实密钥、授权码、访问令牌、数据库密码或本机专用凭据。
+
+## Task 5 用户目标
+
+实现留言业务服务层，在不连接真实数据库、不实现 Express 路由和页面的前提下，封装留言列表、查询、创建、更新、删除和批量删除的业务规则。服务层必须使用 Task 4 的 repository 形状，并负责标题/内容校验、当前用户校验、创建人写入和创建人权限判断。
+
+## Task 5 Codex 任务提示词
+
+```text
+你正在实现 Task 5: 留言业务服务。
+
+要求：
+1. 只实现 Task 5，不实现后续路由、页面或 OAuth 接入。
+2. 写入范围只限于 `src/messages/service.js`、`test/message-service.test.js`，并更新本滚动归档。
+3. 采用 TDD 顺序：先写 `test/message-service.test.js`，运行 `npm test -- test/message-service.test.js` 确认缺少 `src/messages/service.js` 时失败。
+4. 创建 `src/messages/service.js`，导出 `createMessageService`、`ValidationError`、`PermissionError`、`NotFoundError`。
+5. `ValidationError.status=400`，`PermissionError.status=403`，`NotFoundError.status=404`。
+6. `create(...)` 必须要求 `currentUser.userid`，校验并 trim `title` 和 `content`，标题最大 200 字符，并由服务端写入 `creatorUserid=currentUser.userid`。
+7. `update(...)` 和 `delete(...)` 必须先查找留言，只有创建人可以修改或删除。
+8. `deleteMany(...)` 必须复用同一条删除权限路径，但不要依赖动态 `this`；解构调用也必须可用。
+9. 不写入真实密钥、授权码、访问令牌或数据库凭据。
+10. 最终运行 `npm test -- test/message-service.test.js` 和 `npm test`。
+```
+
+## Task 5 修改文件
+
+- `src/messages/service.js`
+- `test/message-service.test.js`
+- `docs/codex/prompts/2026-05-04-03-message-registry-implementation.md`
+
+## Task 5 验证命令
+
+Task 5 按 TDD 顺序执行的关键验证命令：
+
+```bash
+npm test -- test/message-service.test.js
+npm test
+git diff --name-only
+git status --short --branch
+```
+
+RED 阶段验证结果：
+
+```text
+npm test -- test/message-service.test.js
+# fail 1
+# reason: Error [ERR_MODULE_NOT_FOUND]: Cannot find module '.../src/messages/service.js'
+```
+
+GREEN 阶段验证结果：
+
+```text
+npm test -- test/message-service.test.js
+# tests 7
+# pass 7
+```
+
+最终验证结果：
+
+```text
+npm test -- test/message-service.test.js
+# tests 7
+# pass 7
+
+npm test
+# tests 39
+# pass 39
+```
+
+## Task 5 结果摘要
+
+- 已新增 `src/messages/service.js`，通过注入的 `repository`、`idFactory` 和 `clock` 封装留言业务规则。
+- 已导出 `ValidationError`、`PermissionError`、`NotFoundError`，并分别设置 HTTP 语义状态码 `400`、`403`、`404`。
+- 已实现 `isReady()`：repository 提供 `tableExists()` 时委托检查，否则返回 `true`。
+- 已实现 `list(filters)` 和 `findById(id)`；`findById(id)` 对缺失记录抛出 `NotFoundError`。
+- 已实现 `create(input, currentUser)`：要求当前用户 `userid`，校验并修剪标题和内容，限制标题最大 200 字符，并强制写入服务端拥有的 `creatorUserid`。
+- 已实现 `update(id, input, currentUser)`：记录必须存在，且只有 `creatorUserid` 匹配当前用户时允许更新。
+- 已实现 `delete(id, currentUser)`：记录必须存在，且只有创建人可以删除；删除结果异常时按未找到处理。
+- 已实现 `deleteMany(ids, currentUser)`：按顺序调用闭包内的 `deleteMessage(...)`，复用同一条权限路径，不依赖动态 `this`。
+- 已新增 `test/message-service.test.js`，覆盖 readiness、创建人写入、空标题/内容拒绝、非对象输入拒绝、更新权限、删除权限和 `deleteMany` 解构调用。
+
+## Task 5 已知限制
+
+- Task 5 只实现留言业务服务层，不连接真实 MariaDB，不读取 `.codex/project-record.local.md`。
+- Task 5 没有实现 Express 路由、OAuth 登录接入、EJS 页面、浏览器验证或真实 BPMT API 调用。
+- 单元测试使用内存 fake repository，不写入真实数据库。
+- `deleteMany(ids, currentUser)` 当前返回每条删除操作的布尔结果数组；后续路由层如果需要展示删除数量，可在路由层统计。
+- 本归档不包含真实密钥、授权码、访问令牌、数据库密码或本机专用凭据。
