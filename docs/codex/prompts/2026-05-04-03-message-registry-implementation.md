@@ -709,3 +709,43 @@ npm test
 - 单元测试使用 fake `fetch` 和测试 session，不访问真实 BPMT 实例，不读取 `.codex/project-record.local.md`。
 - 测试中出现的 `client-secret`、`code-1`、`token-1` 均为占位测试值，不是真实 OAuth 密钥、授权码或访问令牌。
 - 本归档不包含真实 client secret、BPMT API app secret、授权码、访问令牌、数据库密码或本机专用凭据。
+
+## Task 6 审查后修复
+
+代码质量审查发现 OAuth 登录成功后直接把匿名 session 升级为登录 session，未重新生成 session，存在 session fixation 风险。本次修复保持原 OAuth state 校验、token 换取和 userinfo 获取语义不变，在 userinfo 成功后、写入本地用户会话前调用 `req.session.regenerate(...)`。如果 state 校验、token 换取、userinfo 获取或 session regenerate 任一步失败，都不会写入已登录用户 session。
+
+补充修改文件：
+
+- `src/auth/routes.js`
+- `test/oauth.test.js`
+- `docs/codex/prompts/2026-05-04-03-message-registry-implementation.md`
+
+补充验证命令：
+
+```bash
+npm test -- test/oauth.test.js
+npm test
+git status --short --branch
+```
+
+补充 TDD 验证结果：
+
+```text
+npm test -- test/oauth.test.js
+# RED: callback 成功路径新增断言失败，regenerate 调用次数为 0
+
+npm test -- test/oauth.test.js
+# GREEN: tests 9
+# pass 9
+
+npm test
+# tests 49
+# pass 49
+```
+
+补充结果摘要：
+
+- 已新增路由内 `regenerateSession(req)` Promise 包装，避免在 `saveUserSession(req, userInfo)` 前复用旧匿名 SID。
+- 已补充 callback 成功路径测试，使用中间件包装 `req.session.regenerate`，断言登录成功时 regenerate 被调用 1 次，且 callback 完成后仍能读取本地用户 session。
+- 已确认 `saveUserSession` 仍只保存 `userid`、`name`、`group`、`role`，不保存 BPMT `access_token`。
+- 本次修复不包含真实密钥、授权码、访问令牌、密码或数据库凭据。

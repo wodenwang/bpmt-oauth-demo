@@ -218,6 +218,7 @@ test('requireLogin continues for logged-in users and redirects anonymous users',
 
 test('callback exchanges code, fetches userinfo, saves local session, and redirects home', async () => {
   const app = express();
+  let regenerateCalls = 0;
   app.use(
     session({
       secret: 'test-session-secret',
@@ -225,6 +226,14 @@ test('callback exchanges code, fetches userinfo, saves local session, and redire
       saveUninitialized: true
     })
   );
+  app.use((req, res, next) => {
+    const originalRegenerate = req.session.regenerate.bind(req.session);
+    req.session.regenerate = (callback) => {
+      regenerateCalls += 1;
+      originalRegenerate(callback);
+    };
+    next();
+  });
   app.use(createAuthRouter({ express, config: oauthConfig }));
   app.get('/session-user', (req, res) => res.json(req.session.user || null));
   app.use((error, req, res, next) => {
@@ -261,6 +270,7 @@ test('callback exchanges code, fetches userinfo, saves local session, and redire
     await agent.get(`/oauth/callback?code=code-1&state=${state}`).expect(302).expect('Location', '/');
     const sessionResponse = await agent.get('/session-user').expect(200);
 
+    assert.equal(regenerateCalls, 1);
     assert.equal(calls[0].url, 'http://localhost/oauth/token');
     assert.equal(new URLSearchParams(calls[0].options.body).get('code'), 'code-1');
     assert.equal(calls[1].url, 'http://localhost/oauth/userinfo');
