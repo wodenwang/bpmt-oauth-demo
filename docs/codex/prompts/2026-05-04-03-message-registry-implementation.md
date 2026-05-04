@@ -749,3 +749,92 @@ npm test
 - 已补充 callback 成功路径测试，使用中间件包装 `req.session.regenerate`，断言登录成功时 regenerate 被调用 1 次，且 callback 完成后仍能读取本地用户 session。
 - 已确认 `saveUserSession` 仍只保存 `userid`、`name`、`group`、`role`，不保存 BPMT `access_token`。
 - 本次修复不包含真实密钥、授权码、访问令牌、密码或数据库凭据。
+
+## Task 7 用户目标
+
+实现 Express 应用装配和留言登记路由，打通 OAuth 本地登录态、留言 service、基础 EJS 页面和统一错误页。Task 7 只交付最低可用服务端渲染页面和路由行为，不实现 Task 8 的完整 BPMT 风格 UI，不做 Docker 或 README。
+
+## Task 7 Codex 任务提示词
+
+```text
+你是 Task 7 的实现代理。请在隔离 worktree 中直接编辑文件、运行测试并提交。
+
+要求：
+1. 只实现 Task 7，不做 Task 8 的完整 BPMT 风格 UI，不做 Docker/README。
+2. 遵守 AGENTS.md，所有用户可见文案和文档使用中文，不能写入真实 client_secret、BPMT_API_APP_SECRET、授权 code、access_token、密码或数据库凭据。
+3. 使用 TDD：先写测试确认失败，再实现，再运行目标测试和全量测试。
+4. `src/messages/routes.js` 导出 `createMessageRouter({ express, service })`。
+5. 首页 `GET /` 必须 `requireLogin`，匿名用户重定向 `/login`；登录后解析 `title`、`creatorUserid`、`page`、`pageSize`，检查 `service.isReady()`，渲染 `messages/index`。
+6. 留言详情、新增、更新、删除、批量删除路由均需 `requireLogin`，成功后设置中文 flash 并重定向 `/`。
+7. 路由错误统一 `next(error)`，保留业务错误 `status`。
+8. `src/app.js` 导出 `createApp({ appConfig = loadConfig(), messageService } = {})`，配置 EJS、body parser、`/static`、session、auth router、message router 和错误页。
+9. 测试注入 `messageService` 时不能创建真实 DB 连接。
+10. `src/server.js` 加载配置、创建 app 并监听端口，输出服务启动信息和脱敏配置。
+11. 创建最低可用 EJS 视图以通过路由测试。
+12. 更新滚动提示词归档，最终运行 `npm test -- test/message-routes.test.js`、`npm test`、`git status --short --branch` 并提交。
+```
+
+## Task 7 修改文件
+
+- `src/app.js`
+- `src/server.js`
+- `src/messages/routes.js`
+- `views/layout.ejs`
+- `views/messages/index.ejs`
+- `views/messages/modal.ejs`
+- `views/error.ejs`
+- `test/message-routes.test.js`
+- `docs/codex/prompts/2026-05-04-03-message-registry-implementation.md`
+
+## Task 7 验证命令
+
+Task 7 按 TDD 顺序执行的关键验证命令：
+
+```bash
+npm test -- test/message-routes.test.js
+npm test
+git status --short --branch
+```
+
+RED 阶段验证结果：
+
+```text
+npm test -- test/message-routes.test.js
+# fail 1
+# reason: Error [ERR_MODULE_NOT_FOUND]: Cannot find module '.../src/app.js'
+```
+
+GREEN 阶段验证结果：
+
+```text
+npm test -- test/message-routes.test.js
+# tests 10
+# pass 10
+
+npm test
+# tests 59
+# pass 59
+```
+
+## Task 7 结果摘要
+
+- 已新增 `src/messages/routes.js`，实现首页、详情 modal、新增、更新、删除、批量删除留言路由。
+- 首页已接入 `requireLogin`；匿名访问重定向 `/login`，登录用户访问时解析筛选条件并调用 `service.list(filters)`。
+- 首页在 `service.isReady()` 存在且返回 `false` 时不查询列表，改为渲染 `DEMO_MESSAGE` 初始化提示。
+- 首页渲染传入 `title='留言登记'`、`user`、`filters`、`result`、`setupRequired`、`flash`，并在渲染前消费和清理 `req.session.flash`。
+- 所有写操作成功后设置中文 flash：`留言已新增`、`留言已更新`、`留言已删除`、`选中留言已删除`，然后重定向 `/`。
+- 批量删除兼容单个字符串 `ids` 和数组 `ids`。
+- 已新增 `src/app.js`，配置 EJS 视图、表单和 JSON body parser、`/static` 静态资源、`express-session`、OAuth auth router、留言 router 和统一错误页。
+- `createApp(...)` 在注入 `messageService` 时不创建 DB pool；未注入时才创建 DB pool、repository 和 message service。
+- session 名称为 `bpmt_oauth_demo_sid`，cookie 使用 `httpOnly`、`sameSite='lax'`，生产环境启用 `secure`。
+- 错误页对 `status >= 500` 展示 `系统暂时不可用，请稍后重试`，对 4xx 展示业务错误 message。
+- 已新增 `src/server.js`，显式加载 `.env`，创建 app 后监听 `config.port`，并输出启动端口和脱敏配置。
+- 已创建最低可用 EJS 页面，后续 Task 8 可在此基础上替换为完整 BPMT 风格 UI。
+
+## Task 7 已知限制
+
+- Task 7 只实现最低可用服务端页面，不包含 Task 8 的完整 BPMT 风格视觉、交互细节或前端增强。
+- Task 7 没有做真实浏览器 OAuth 联调，也没有连接本机 BPMT 实例或 MariaDB；路由测试通过注入 fake `messageService` 验证行为。
+- `views/layout.ejs` 当前作为基础模板归档，未引入额外 layout 中间件；页面视图自身保持完整 HTML，便于 Task 8 后续替换。
+- `src/server.js` 仅在运行时打印 `redactConfig(config)` 的脱敏结果，不输出真实密钥、授权码、访问令牌、密码或数据库凭据。
+- 本归档不包含真实 client secret、BPMT API app secret、授权码、访问令牌、数据库密码或本机专用凭据。

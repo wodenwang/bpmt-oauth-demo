@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %></title>
+</head>
+<body>
+  <header>
+    <h1>留言登记</h1>
+    <p>当前用户：<%= user.name || user.userid %></p>
+    <form method="post" action="/logout">
+      <button type="submit">退出登录</button>
+    </form>
+  </header>
+
+  <% if (flash) { %>
+    <p role="status"><%= flash.message %></p>
+  <% } %>
+
+  <form method="get" action="/">
+    <label>
+      标题
+      <input name="title" value="<%= filters.title %>">
+    </label>
+    <label>
+      创建人
+      <input name="creatorUserid" value="<%= filters.creatorUserid %>">
+    </label>
+    <label>
+      页码
+      <input name="page" value="<%= filters.page %>">
+    </label>
+    <label>
+      每页数量
+      <input name="pageSize" value="<%= filters.pageSize %>">
+    </label>
+    <button type="submit">查询</button>
+  </form>
+
+  <% if (setupRequired) { %>
+    <p>DEMO_MESSAGE 留言表尚未初始化，请先运行初始化命令：npm run setup</p>
+  <% } else { %>
+    <section>
+      <h2>新增留言</h2>
+      <form method="post" action="/messages">
+        <label>
+          标题
+          <input name="title" required>
+        </label>
+        <label>
+          内容
+          <textarea name="content" required></textarea>
+        </label>
+        <button type="submit">新增</button>
+      </form>
+    </section>
+
+    <form method="post" action="/messages/bulk-delete">
+      <table>
+        <thead>
+          <tr>
+            <th>选择</th>
+            <th>标题</th>
+            <th>内容</th>
+            <th>创建人</th>
+            <th>创建时间</th>
+            <th>更新时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (const row of result.rows) { %>
+            <tr>
+              <td><input type="checkbox" name="ids" value="<%= row.id %>"></td>
+              <td><%= row.title %></td>
+              <td><%= row.content %></td>
+              <td><%= row.creatorUserid %></td>
+              <td><%= row.createTime || '' %></td>
+              <td><%= row.updateTime || '' %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+      <p>共 <%= result.total %> 条，第 <%= result.page %> / <%= result.totalPages %> 页</p>
+      <button type="submit">删除选中</button>
+    </form>
+  <% } %>
+</body>
+</html>
