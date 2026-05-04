@@ -21,12 +21,44 @@ function redactSecret(value, secret) {
   return text.split(secret).join('<redacted>');
 }
 
-function formatSafeDiagnostics(payload, appSecret) {
+function isSensitiveKey(key) {
+  const normalized = String(key).replace(/[-_]/g, '').toLowerCase();
+  return ['appsecret', 'clientsecret', 'password', 'secret', 'accesstoken', 'refreshtoken', 'token'].includes(
+    normalized
+  );
+}
+
+function sanitizePayload(value, appSecret) {
+  if (value === null || value === undefined) return value;
+  if (typeof value === 'string') return redactSecret(value, appSecret);
+  if (Array.isArray(value)) return value.map((item) => sanitizePayload(item, appSecret));
+  if (typeof value !== 'object') return value;
+
+  const sanitized = {};
+  for (const [key, item] of Object.entries(value)) {
+    sanitized[key] = isSensitiveKey(key) ? '<redacted>' : sanitizePayload(item, appSecret);
+  }
+  return sanitized;
+}
+
+function pushDiagnostic(diagnostics, field, value) {
+  if (value === undefined || value === null || value === '') return;
+  const text = typeof value === 'object' ? JSON.stringify(value) : String(value);
+  diagnostics.push(`${field}=${text}`);
+}
+
+function formatSafeDiagnostics(payload) {
   const diagnostics = [];
-  for (const field of ['code', 'error', 'message']) {
+  for (const field of ['code', 'error', 'message', 'error_description']) {
     const value = payload?.[field];
-    if (value === undefined || value === null || value === '') continue;
-    diagnostics.push(`${field}=${redactSecret(value, appSecret)}`);
+    if (field === 'error' && value && typeof value === 'object') continue;
+    pushDiagnostic(diagnostics, field, value);
+  }
+
+  if (payload?.error && typeof payload.error === 'object') {
+    for (const field of ['code', 'message', 'requestId', 'details']) {
+      pushDiagnostic(diagnostics, field, payload.error[field]);
+    }
   }
   return diagnostics.join(' ');
 }
@@ -58,7 +90,8 @@ export function createBpmtApiClient({ baseUrl, appKey, appSecret, fetchImpl = fe
     const payload = await readJson(response);
 
     if (!response.ok) {
-      const safeDiagnostics = formatSafeDiagnostics(payload, appSecret);
+      const safePayload = sanitizePayload(payload, appSecret);
+      const safeDiagnostics = formatSafeDiagnostics(safePayload);
       const message = [
         `BPMT API 调用失败: ${method} ${publicPath} HTTP ${response.status}`,
         safeDiagnostics
@@ -67,7 +100,7 @@ export function createBpmtApiClient({ baseUrl, appKey, appSecret, fetchImpl = fe
         .join(' ');
       const error = new Error(message);
       error.status = response.status;
-      error.payload = payload;
+      error.payload = safePayload;
       throw error;
     }
 

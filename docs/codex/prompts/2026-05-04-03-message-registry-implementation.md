@@ -293,3 +293,59 @@ npm test
 - 本次修复不修改 Task 2 的 `src/bpmt/signature.js`。
 - 测试中的 `api-secret` 是固定假值，不是真实 `BPMT_API_APP_SECRET`。
 - 本归档不包含真实密钥、授权码、访问令牌、数据库密码或本机专用凭据。
+
+## Task 3 二次代码质量复审修复
+
+### 二次复审问题
+
+Task 3 复审修复后，代码质量审查继续指出以下问题：
+
+- 真实 BPMT ErrorEnvelope 可能是嵌套结构，例如 `{ error: { code, message, requestId, details } }`，此前诊断会输出 `error=[object Object]`。
+- `error.payload` 此前保留原始 payload 且可枚举，未来如果调用 `console.error(error)` 或 `util.inspect(error)`，可能把 secret 带入日志。
+
+### 二次修复内容
+
+- `test/bpmt-api.test.js` 新增嵌套 ErrorEnvelope 测试，断言 `error.message` 包含 `INVALID_SIGNATURE`、`bad sign` 和 `requestId=req-123`，且不包含 `[object Object]`。
+- `test/bpmt-api.test.js` 新增错误对象脱敏断言，确认 `JSON.stringify(error.payload)` 和 `util.inspect(error)` 都不包含测试假密钥 `api-secret`。
+- `src/bpmt/api.js` 新增递归 `sanitizePayload(...)`，会把字符串中的当前 app secret 替换为 `<redacted>`，并按 key 名脱敏 `appSecret`、`clientSecret`、`password`、`secret`、`accessToken`、`refreshToken`、`token`。
+- `src/bpmt/api.js` 保留 BPMT 错误码字段 `code`，不会因为字段名为 `code` 而脱敏 `INVALID_SIGNATURE`。
+- `src/bpmt/api.js` 的 `error.payload` 现在挂载脱敏后的 payload，不再挂载原始 payload。
+- `src/bpmt/api.js` 的安全诊断同时支持顶层 `{ code, error, message, error_description }` 和嵌套 `{ error: { code, message, requestId, details } }`。
+
+### 二次修复验证
+
+RED 阶段验证结果：
+
+```text
+npm test -- test/bpmt-api.test.js
+# fail 1
+# failing test: createDynamicTable includes nested BPMT error envelope diagnostics without leaking secrets
+# reason: error.message 输出 error=[object Object]，缺少 INVALID_SIGNATURE
+```
+
+GREEN 阶段验证结果：
+
+```text
+npm test -- test/bpmt-api.test.js
+# tests 5
+# pass 5
+```
+
+最终验证结果：
+
+```text
+npm test -- test/bpmt-api.test.js
+# tests 5
+# pass 5
+
+npm test
+# tests 15
+# pass 15
+```
+
+### 二次修复限制
+
+- 本次修复仍不连接真实 BPMT 实例，HTTP 行为通过 fake fetch 单元测试验证。
+- 本次修复不修改 `scripts/setup.js`，也不修改 Task 2 的 `src/bpmt/signature.js`。
+- 测试中的 `api-secret` 是固定假值，不是真实 `BPMT_API_APP_SECRET`。
+- 本归档不包含真实密钥、授权码、访问令牌、数据库密码或本机专用凭据。

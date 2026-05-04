@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { inspect } from 'node:util';
 import { createBpmtApiClient } from '../src/bpmt/api.js';
 import { DEMO_MESSAGE_TABLE } from '../src/setup/tableDefinition.js';
 
@@ -108,6 +109,48 @@ test('createDynamicTable includes safe BPMT diagnostics for non-conflict errors'
       assert.match(error.message, /invalid_signature/);
       assert.match(error.message, /bad sign/);
       assert.doesNotMatch(error.message, /api-secret/);
+      return true;
+    }
+  );
+});
+
+test('createDynamicTable includes nested BPMT error envelope diagnostics without leaking secrets', async () => {
+  const client = createBpmtApiClient({
+    baseUrl: 'http://127.0.0.1/api',
+    appKey: 'bpmt-api',
+    appSecret: 'api-secret',
+    fetchImpl: async () => ({
+      ok: false,
+      status: 401,
+      text: async () =>
+        JSON.stringify({
+          error: {
+            code: 'INVALID_SIGNATURE',
+            message: 'bad sign',
+            requestId: 'req-123',
+            details: {
+              appSecret: 'api-secret',
+              accessToken: 'api-secret',
+              hint: 'check signature'
+            }
+          },
+          appSecret: 'api-secret'
+        })
+    }),
+    now: () => 1777867200,
+    nonce: () => 'nonce-1'
+  });
+
+  await assert.rejects(
+    () => client.createDynamicTable(DEMO_MESSAGE_TABLE),
+    (error) => {
+      assert.equal(error.status, 401);
+      assert.match(error.message, /INVALID_SIGNATURE/);
+      assert.match(error.message, /bad sign/);
+      assert.match(error.message, /requestId=req-123/);
+      assert.doesNotMatch(error.message, /\[object Object\]/);
+      assert.doesNotMatch(JSON.stringify(error.payload), /api-secret/);
+      assert.doesNotMatch(inspect(error), /api-secret/);
       return true;
     }
   );
