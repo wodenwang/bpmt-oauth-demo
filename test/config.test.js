@@ -28,6 +28,16 @@ test('loadConfig parses required environment values', () => {
   assert.equal(config.db.port, 3306);
 });
 
+test('loadConfig removes trailing slashes from BPMT base URLs', () => {
+  const config = loadConfig({
+    ...baseEnv,
+    BPMT_BASE_URL: 'http://localhost///',
+    BPMT_API_BASE_URL: 'http://127.0.0.1/api///'
+  });
+  assert.equal(config.bpmtBaseUrl, 'http://localhost');
+  assert.equal(config.bpmtApi.baseUrl, 'http://127.0.0.1/api');
+});
+
 test('loadConfig reports missing required values without leaking secrets', () => {
   const env = { ...baseEnv, BPMT_OAUTH_CLIENT_SECRET: '' };
   assert.throws(
@@ -56,6 +66,7 @@ test('loadConfig rejects non-numeric port values', () => {
 test('redactConfig removes secrets from diagnostic output', () => {
   const config = loadConfig(baseEnv);
   const redacted = redactConfig(config);
+  assert.equal(redacted.sessionSecret, '<redacted>');
   assert.equal(redacted.oauth.clientSecret, '<redacted>');
   assert.equal(redacted.bpmtApi.appSecret, '<redacted>');
   assert.equal(redacted.db.password, '<redacted>');

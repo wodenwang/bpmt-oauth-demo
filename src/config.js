@@ -44,14 +44,14 @@ export function loadConfig(env = process.env) {
     nodeEnv: env.NODE_ENV || 'development',
     port: parsePort(env.PORT || '81', 'PORT'),
     sessionSecret: requireValue(env, 'SESSION_SECRET'),
-    bpmtBaseUrl: requireValue(env, 'BPMT_BASE_URL').replace(/\/$/, ''),
+    bpmtBaseUrl: requireValue(env, 'BPMT_BASE_URL').replace(/\/+$/, ''),
     oauth: {
       clientId: requireValue(env, 'BPMT_OAUTH_CLIENT_ID'),
       clientSecret: requireValue(env, 'BPMT_OAUTH_CLIENT_SECRET'),
       redirectUri: requireValue(env, 'BPMT_OAUTH_REDIRECT_URI')
     },
     bpmtApi: {
-      baseUrl: requireValue(env, 'BPMT_API_BASE_URL').replace(/\/$/, ''),
+      baseUrl: requireValue(env, 'BPMT_API_BASE_URL').replace(/\/+$/, ''),
       appKey: requireValue(env, 'BPMT_API_APP_KEY'),
       appSecret: requireValue(env, 'BPMT_API_APP_SECRET')
     },
