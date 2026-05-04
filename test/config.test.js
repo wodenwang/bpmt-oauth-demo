@@ -23,6 +23,8 @@ const baseEnv = {
 test('loadConfig parses required environment values', () => {
   const config = loadConfig(baseEnv);
   assert.equal(config.port, 81);
+  assert.equal(config.bpmtBaseUrl, 'http://localhost');
+  assert.equal(config.bpmtServerBaseUrl, 'http://localhost');
   assert.equal(config.oauth.clientId, 'bpmt-oauth-demo');
   assert.equal(config.oauth.redirectUri, 'http://localhost:81/oauth/callback');
   assert.equal(config.db.port, 3306);
@@ -32,9 +34,11 @@ test('loadConfig removes trailing slashes from BPMT base URLs', () => {
   const config = loadConfig({
     ...baseEnv,
     BPMT_BASE_URL: 'http://localhost///',
+    BPMT_SERVER_BASE_URL: 'http://host.docker.internal///',
     BPMT_API_BASE_URL: 'http://127.0.0.1/api///'
   });
   assert.equal(config.bpmtBaseUrl, 'http://localhost');
+  assert.equal(config.bpmtServerBaseUrl, 'http://host.docker.internal');
   assert.equal(config.bpmtApi.baseUrl, 'http://127.0.0.1/api');
 });
 

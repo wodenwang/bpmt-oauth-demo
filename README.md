@@ -40,7 +40,8 @@ cp .env.example .env
 | `NODE_ENV` | 运行环境，本地开发通常为 `development` |
 | `PORT` | demo 监听端口，默认 `81` |
 | `SESSION_SECRET` | demo 本地 session 签名密钥，使用本机私有值 |
-| `BPMT_BASE_URL` | BPMT 基础地址，本机默认 `http://localhost` |
+| `BPMT_BASE_URL` | 浏览器访问 BPMT 的外部基础地址，本机默认 `http://localhost` |
+| `BPMT_SERVER_BASE_URL` | 可选，demo 服务端访问 BPMT token/userinfo 的内部地址；不填时默认等于 `BPMT_BASE_URL` |
 | `BPMT_OAUTH_CLIENT_ID` | BPMT 登记的 OAuth 客户端标识，默认 `bpmt-oauth-demo` |
 | `BPMT_OAUTH_CLIENT_SECRET` | BPMT 生成的 OAuth 客户端密钥，使用 `<BPMT_OAUTH_CLIENT_SECRET>` 占位符替换 |
 | `BPMT_OAUTH_REDIRECT_URI` | 必须为 `http://localhost:81/oauth/callback` |
@@ -125,7 +126,21 @@ docker run --rm --name bpmt-oauth-demo \
   bpmt-oauth-demo:local
 ```
 
-如果容器内访问宿主机上的 BPMT 或 MariaDB，请按 Docker 环境调整 `.env` 中的主机名。例如 Docker Desktop 场景可评估使用 `host.docker.internal` 访问宿主机服务；但 OAuth 回调地址仍必须保持 `http://localhost:81/oauth/callback`，并与 BPMT 后台登记值完全一致。
+如果容器内访问宿主机上的 BPMT 或 MariaDB，请按 Docker 环境调整服务端内部地址。本机 Docker Desktop 验证可使用 `docker.for.mac.localhost`：
+
+```bash
+docker run --rm --name bpmt-oauth-demo \
+  --env-file .env \
+  -e BPMT_SERVER_BASE_URL=http://docker.for.mac.localhost \
+  -e BPMT_API_BASE_URL=http://docker.for.mac.localhost/api \
+  -e DB_HOST=docker.for.mac.localhost \
+  -p 81:81 \
+  bpmt-oauth-demo:local
+```
+
+其中 `BPMT_BASE_URL` 仍建议保持浏览器可访问的 `http://localhost`，`BPMT_OAUTH_REDIRECT_URI` 仍必须保持 `http://localhost:81/oauth/callback`，并与 BPMT 后台登记值完全一致。
+
+不同 Docker Desktop 或 Linux Docker 环境的宿主机别名可能不同。如果 `docker.for.mac.localhost` 不可用，可改用 `host.docker.internal` 或 Compose 服务名，但要保持 `BPMT_BASE_URL` 是浏览器可访问地址，`BPMT_SERVER_BASE_URL` 是容器内可访问地址。
 
 容器内应用监听 `81` 端口，镜像启动命令为：
 

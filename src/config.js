@@ -35,23 +35,32 @@ function parsePort(value, key) {
   return port;
 }
 
+function trimTrailingSlashes(value) {
+  return value.replace(/\/+$/, '');
+}
+
 export function loadConfig(env = process.env) {
   for (const key of REQUIRED_KEYS) {
     requireValue(env, key);
   }
 
+  const bpmtBaseUrl = trimTrailingSlashes(requireValue(env, 'BPMT_BASE_URL'));
+
   return {
     nodeEnv: env.NODE_ENV || 'development',
     port: parsePort(env.PORT || '81', 'PORT'),
     sessionSecret: requireValue(env, 'SESSION_SECRET'),
-    bpmtBaseUrl: requireValue(env, 'BPMT_BASE_URL').replace(/\/+$/, ''),
+    bpmtBaseUrl,
+    bpmtServerBaseUrl: env.BPMT_SERVER_BASE_URL && String(env.BPMT_SERVER_BASE_URL).trim() !== ''
+      ? trimTrailingSlashes(String(env.BPMT_SERVER_BASE_URL).trim())
+      : bpmtBaseUrl,
     oauth: {
       clientId: requireValue(env, 'BPMT_OAUTH_CLIENT_ID'),
       clientSecret: requireValue(env, 'BPMT_OAUTH_CLIENT_SECRET'),
       redirectUri: requireValue(env, 'BPMT_OAUTH_REDIRECT_URI')
     },
     bpmtApi: {
-      baseUrl: requireValue(env, 'BPMT_API_BASE_URL').replace(/\/+$/, ''),
+      baseUrl: trimTrailingSlashes(requireValue(env, 'BPMT_API_BASE_URL')),
       appKey: requireValue(env, 'BPMT_API_APP_KEY'),
       appSecret: requireValue(env, 'BPMT_API_APP_SECRET')
     },

@@ -23,6 +23,10 @@ async function parseResponse(response, failureMessage) {
   return payload;
 }
 
+function serverBaseUrl(config) {
+  return config.bpmtServerBaseUrl || config.bpmtBaseUrl;
+}
+
 export function buildAuthorizeUrl(config, state) {
   const url = new URL('/oauth/authorize', config.bpmtBaseUrl);
   url.searchParams.set('response_type', 'code');
@@ -48,7 +52,7 @@ export async function exchangeCodeForToken({ config, code, fetchImpl = fetch }) 
     client_secret: config.oauth.clientSecret
   });
 
-  const response = await fetchImpl(new URL('/oauth/token', config.bpmtBaseUrl).toString(), {
+  const response = await fetchImpl(new URL('/oauth/token', serverBaseUrl(config)).toString(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body
@@ -63,7 +67,7 @@ export async function exchangeCodeForToken({ config, code, fetchImpl = fetch }) 
 }
 
 export async function fetchUserInfo({ config, accessToken, fetchImpl = fetch }) {
-  const response = await fetchImpl(new URL('/oauth/userinfo', config.bpmtBaseUrl).toString(), {
+  const response = await fetchImpl(new URL('/oauth/userinfo', serverBaseUrl(config)).toString(), {
     method: 'GET',
     headers: { Authorization: `Bearer ${accessToken}` }
   });

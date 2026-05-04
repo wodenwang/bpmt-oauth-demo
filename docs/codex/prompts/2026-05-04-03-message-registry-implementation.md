@@ -1008,3 +1008,74 @@ git status --short --branch
 - Docker 验证只构建镜像，不启动容器做真实 OAuth 登录或 CRUD 联调。
 - 未添加 `/favicon.ico` 204 响应，因为本任务未执行浏览器验证，也没有发现 favicon 404 噪音证据。
 - 本归档不包含真实 client secret、BPMT API app secret、授权码、访问令牌、数据库密码或本机专用凭据。
+
+## Task 10 用户目标
+
+对留言登记表 demo 做真实本机验证和收口，覆盖 BPMT API 初始化、81 端口启动、BPMT OAuth 登录、留言新增/查看/编辑/删除、Docker 构建和 Docker 运行形态。
+
+## Task 10 Codex 任务提示词
+
+```text
+你正在执行 Task 10: 真实环境验证和收口。
+
+要求：
+1. 检查本机配置来源，只输出存在性，不打印密钥。
+2. 使用本机未跟踪记录生成 worktree 专用 `.env`，`.env` 必须被 `.gitignore` 忽略。
+3. 执行 `npm run setup` 初始化 `DEMO_MESSAGE`。
+4. 启动 81 端口服务，使用浏览器验证 BPMT OAuth 登录和留言 CRUD。
+5. 运行 `npm test`、`docker build -t bpmt-oauth-demo:local .` 和敏感赋值扫描。
+6. 验证 Docker 运行形态；如果发现 Docker 内部访问 BPMT/MariaDB 的地址与浏览器访问地址冲突，补充向后兼容配置。
+7. 追加中文归档，不写入真实 client secret、BPMT API app secret、授权 code、access token、密码或数据库凭据。
+```
+
+## Task 10 修改文件
+
+- `src/config.js`
+- `src/auth/oauth.js`
+- `.env.example`
+- `README.md`
+- `test/config.test.js`
+- `test/oauth.test.js`
+- `docs/codex/prompts/2026-05-04-03-message-registry-implementation.md`
+
+## Task 10 验证命令
+
+```bash
+test -f .env && echo ".env exists" || echo ".env missing"
+test -f .codex/project-record.local.md && echo "local record exists" || echo "local record missing"
+curl -fsS -o /dev/null -w 'bpmt_root_http=%{http_code}\n' http://localhost/ || true
+curl -fsS -o /tmp/bpmt-openapi-check.json -w 'openapi_http=%{http_code}\n' http://127.0.0.1/api/openapi.json || true
+npm run setup
+npm start
+npm test
+docker build -t bpmt-oauth-demo:local .
+docker run --rm --name bpmt-oauth-demo-verify --env-file .env \
+  -e BPMT_SERVER_BASE_URL=http://docker.for.mac.localhost \
+  -e BPMT_API_BASE_URL=http://docker.for.mac.localhost/api \
+  -e DB_HOST=docker.for.mac.localhost \
+  -p 81:81 bpmt-oauth-demo:local
+rg -n "(BPMT_OAUTH_CLIENT_SECRET|BPMT_API_APP_SECRET|DB_PASSWORD|access_token|client_secret)=[^<\\s][^\\s]*" . --glob '!node_modules/**' --glob '!.env' --glob '!package-lock.json'
+```
+
+## Task 10 结果摘要
+
+- 隔离 worktree 初始没有 `.env` 和 `.codex/project-record.local.md`；主仓库存在被忽略的 `.codex/project-record.local.md`。
+- 已从主仓库本机记录生成 worktree 专用 `.env`，并确认 `.env` 被 `.gitignore` 忽略，权限为 `600`。
+- 本机 BPMT 可访问：`http://localhost/` 返回 `200`，`http://127.0.0.1/api/openapi.json` 返回 `200`。
+- `npm run setup` 成功，输出 `DEMO_MESSAGE 已创建` 和 `BPMT demo 表结构初始化完成`。
+- `npm start` 成功监听 `81` 端口，日志中的 session、OAuth、BPMT API 和数据库密码均为 `<redacted>`。
+- 浏览器真实验证通过：打开 `http://localhost:81/` 后跳转 BPMT 登录页，使用本机测试账号登录后回到留言首页。
+- Host 运行形态 CRUD 验证通过：新增 `OAuth demo 测试留言`，列表创建者为 `admin`，查看弹窗展示完整内容，编辑为 `OAuth demo 测试留言-已编辑`，删除后列表回到 `暂无留言`。
+- `npm test` 通过，`63/63`。
+- `docker build -t bpmt-oauth-demo:local .` 通过。
+- Docker 验证时发现容器内服务端访问 BPMT 的地址和浏览器访问 BPMT 的地址需要分离；已新增可选 `BPMT_SERVER_BASE_URL`，默认等于 `BPMT_BASE_URL`，保持本机兼容。
+- 使用 Docker Desktop 本机可达内部地址 `docker.for.mac.localhost` 启动容器后，容器内 OpenAPI 检查返回 `200`。
+- Docker 运行形态真实验证通过：容器监听 `81`，浏览器经 BPMT OAuth 回到 demo 首页；新增 `Docker OAuth demo 测试留言`，查看、编辑为 `Docker OAuth demo 测试留言-已编辑`、删除均成功。
+- 敏感赋值扫描无命中。
+
+## Task 10 已知限制
+
+- Docker 内访问宿主机服务的主机名与 Docker Desktop / Linux Docker / Compose 网络有关。本机验证使用 `docker.for.mac.localhost`；其他环境可使用 `host.docker.internal` 或 Compose 服务名。
+- `BPMT_BASE_URL` 是浏览器可访问 BPMT 的外部地址；`BPMT_SERVER_BASE_URL` 是 demo 服务端可访问 BPMT token/userinfo 的内部地址。未配置 `BPMT_SERVER_BASE_URL` 时默认复用 `BPMT_BASE_URL`。
+- 本 demo 不实现 OIDC、refresh token、跨系统单点登出、附件、评论或复杂角色权限。
+- 本归档不包含真实 client secret、BPMT API app secret、授权码、访问令牌、数据库密码或本机专用凭据。

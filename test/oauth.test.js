@@ -9,6 +9,7 @@ import { createAuthRouter } from '../src/auth/routes.js';
 
 const oauthConfig = {
   bpmtBaseUrl: 'http://localhost',
+  bpmtServerBaseUrl: 'http://bpmt-internal',
   oauth: {
     clientId: 'bpmt-oauth-demo',
     clientSecret: 'client-secret',
@@ -61,7 +62,7 @@ test('exchangeCodeForToken posts authorization_code form body', async () => {
   });
 
   assert.equal(token.userid, 'admin');
-  assert.equal(calls[0].url, 'http://localhost/oauth/token');
+  assert.equal(calls[0].url, 'http://bpmt-internal/oauth/token');
   assert.equal(calls[0].options.method, 'POST');
   assert.equal(calls[0].options.headers['Content-Type'], 'application/x-www-form-urlencoded');
   const body = new URLSearchParams(calls[0].options.body);
@@ -77,7 +78,7 @@ test('fetchUserInfo sends bearer token', async () => {
     config: oauthConfig,
     accessToken: 'token-1',
     fetchImpl: async (url, options) => {
-      assert.equal(url, 'http://localhost/oauth/userinfo');
+      assert.equal(url, 'http://bpmt-internal/oauth/userinfo');
       assert.equal(options.method, 'GET');
       assert.equal(options.headers.Authorization, 'Bearer token-1');
       return {
@@ -244,14 +245,14 @@ test('callback exchanges code, fetches userinfo, saves local session, and redire
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url, options) => {
     calls.push({ url, options });
-    if (url === 'http://localhost/oauth/token') {
+    if (url === 'http://bpmt-internal/oauth/token') {
       return {
         ok: true,
         status: 200,
         text: async () => JSON.stringify({ access_token: 'token-1', userid: 'admin' })
       };
     }
-    if (url === 'http://localhost/oauth/userinfo') {
+    if (url === 'http://bpmt-internal/oauth/userinfo') {
       return {
         ok: true,
         status: 200,
@@ -271,9 +272,9 @@ test('callback exchanges code, fetches userinfo, saves local session, and redire
     const sessionResponse = await agent.get('/session-user').expect(200);
 
     assert.equal(regenerateCalls, 1);
-    assert.equal(calls[0].url, 'http://localhost/oauth/token');
+    assert.equal(calls[0].url, 'http://bpmt-internal/oauth/token');
     assert.equal(new URLSearchParams(calls[0].options.body).get('code'), 'code-1');
-    assert.equal(calls[1].url, 'http://localhost/oauth/userinfo');
+    assert.equal(calls[1].url, 'http://bpmt-internal/oauth/userinfo');
     assert.equal(calls[1].options.headers.Authorization, 'Bearer token-1');
     assert.deepEqual(sessionResponse.body, {
       userid: 'admin',
