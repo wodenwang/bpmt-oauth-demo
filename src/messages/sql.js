@@ -1,28 +1,54 @@
 const TABLE = 'DEMO_MESSAGE';
 
+function normalizePositiveInteger(value, fallback) {
+  if (typeof value === 'number') {
+    return Number.isInteger(value) && value > 0 ? value : fallback;
+  }
+
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  const normalized = value.trim();
+  if (!/^\d+$/.test(normalized)) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(normalized, 10);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 function normalizePage(page) {
-  const parsed = Number.parseInt(page || '1', 10);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+  return normalizePositiveInteger(page, 1);
 }
 
 function normalizePageSize(pageSize) {
-  const parsed = Number.parseInt(pageSize || '20', 10);
-  if (!Number.isInteger(parsed) || parsed < 1) return 20;
+  const parsed = normalizePositiveInteger(pageSize, 20);
   return Math.min(parsed, 100);
+}
+
+function normalizeFilterValue(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function escapeLikeValue(value) {
+  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
 }
 
 function buildWhere(filters = {}) {
   const clauses = [];
   const args = [];
+  const title = normalizeFilterValue(filters.title);
+  const creatorUserid = normalizeFilterValue(filters.creatorUserid);
 
-  if (filters.title && filters.title.trim()) {
-    clauses.push('TITLE LIKE ?');
-    args.push(`%${filters.title.trim()}%`);
+  if (title) {
+    clauses.push(`TITLE LIKE ? ESCAPE '\\\\'`);
+    args.push(`%${escapeLikeValue(title)}%`);
   }
 
-  if (filters.creatorUserid && filters.creatorUserid.trim()) {
+  if (creatorUserid) {
     clauses.push('CREATOR_USERID = ?');
-    args.push(filters.creatorUserid.trim());
+    args.push(creatorUserid);
   }
 
   return {
@@ -38,7 +64,7 @@ export function buildListMessagesQuery(filters = {}) {
   const { whereSql, args } = buildWhere(filters);
 
   return {
-    sql: `SELECT ID, TITLE, CONTENT, CREATOR_USERID, CREATE_TIME, UPDATE_TIME FROM ${TABLE}${whereSql} ORDER BY CREATE_TIME DESC LIMIT ? OFFSET ?`,
+    sql: `SELECT ID, TITLE, CONTENT, CREATOR_USERID, CREATE_TIME, UPDATE_TIME FROM ${TABLE}${whereSql} ORDER BY CREATE_TIME DESC, ID DESC LIMIT ? OFFSET ?`,
     args: [...args, pageSize, offset],
     page,
     pageSize

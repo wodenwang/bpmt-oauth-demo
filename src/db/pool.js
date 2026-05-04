@@ -10,6 +10,7 @@ export function createDbPool(dbConfig = loadConfig().db) {
     database: dbConfig.database,
     waitForConnections: true,
     connectionLimit: 10,
+    dateStrings: true,
     namedPlaceholders: false
   });
 }

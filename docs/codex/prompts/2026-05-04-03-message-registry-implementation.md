@@ -435,3 +435,84 @@ npm test
 - `repository.js` 当前只封装数据库访问，不实现标题长度、内容必填、作者权限、登录态或业务错误处理；这些留给后续 Task。
 - `insert(...)` 和 `update(...)` 执行写入后会调用 `findById(...)` 返回最新记录，调用方需要确保传入的 pool 是可用的服务端数据库连接。
 - 本归档不包含真实密钥、授权码、访问令牌、数据库密码或本机专用凭据。
+
+## Task 4 代码质量审查修复
+
+### 审查问题
+
+Task 4 初始提交后，代码质量审查指出以下问题需要修正：
+
+- `normalizePage(...)` 和 `normalizePageSize(...)` 使用 `parseInt`，会把 `2abc` 解析成 `2`。
+- `TITLE LIKE ?` 没有转义 `%`、`_`、`\`，无法保证普通子串搜索语义。
+- `repository.insert(...)` 和 `repository.update(...)` 依赖 `this.findById(...)`，解构调用或回调传递时会丢失 `this`。
+- 缺少 repository 行为测试，未覆盖 fake pool 下的查询顺序、行映射、写后回读和删除返回值。
+- `mysql2` pool 未设置 `dateStrings: true`，未来 `Date` 对象直出到 EJS 时可能产生展示不一致。
+- 列表排序只按 `CREATE_TIME DESC`，同秒数据分页顺序不稳定。
+- `buildWhere(...)` 对非 string filter 值直接 `.trim()`，会抛出 `trim is not a function`。
+
+### 修复内容
+
+- `test/message-sql.test.js` 新增严格分页测试，确认 `page='2abc'` 和 `pageSize='30xyz'` 会回退到 `page=1`、`pageSize=20`。
+- `test/message-sql.test.js` 新增 `pageSize='150'` 上限测试，确认最大分页大小为 `100`。
+- `test/message-sql.test.js` 新增 `%`、`_`、`\` 的 LIKE 转义测试，确认 SQL 使用 `LIKE ? ESCAPE '\\'`，参数使用转义后的普通子串模式。
+- `test/message-sql.test.js` 新增非 string filter 测试，确认不会调用非法 `.trim()`。
+- `src/messages/sql.js` 新增严格正整数校验，字符串必须全量匹配数字且大于 0；内部数字参数仍要求正整数。
+- `src/messages/sql.js` 新增 LIKE 转义逻辑，将 `\`、`%`、`_` 转义为字面量搜索字符，并在 SQL 中声明 escape 字符。
+- `src/messages/sql.js` 将列表排序调整为 `ORDER BY CREATE_TIME DESC, ID DESC`，保证同秒稳定分页。
+- `src/messages/repository.js` 将 repository 方法改为闭包函数，`insert(...)` 和 `update(...)` 直接调用闭包内的 `findById(...)`，不再依赖动态 `this`。
+- `test/message-repository.test.js` 新增 fake pool 行为测试，覆盖 `tableExists()`、`list()`、`findById()`、`insert()`、`update()`、`delete()` 和解构调用场景。
+- `src/db/pool.js` 增加 `dateStrings: true`，并在测试中确认 pool 配置不会把 MariaDB 日期列直接转为 JS `Date`。
+
+### 修复验证
+
+RED 阶段验证结果：
+
+```text
+npm test -- test/message-sql.test.js test/message-repository.test.js
+# tests 16
+# pass 9
+# fail 7
+# failing reasons:
+# - ORDER BY 缺少 ID DESC
+# - page='2abc' 被解析为 2
+# - LIKE SQL 缺少 ESCAPE '\\'
+# - 非 string title 调用 .trim() 抛错
+# - insert/update 解构调用时 this.findById 为空
+```
+
+补充 `dateStrings` 测试后的 RED 阶段验证结果：
+
+```text
+npm test -- test/message-repository.test.js
+# tests 7
+# pass 3
+# fail 4
+# additional failing reason: pool.pool.config.connectionConfig.dateStrings 为 false
+```
+
+GREEN 阶段验证结果：
+
+```text
+npm test -- test/message-sql.test.js test/message-repository.test.js
+# tests 17
+# pass 17
+```
+
+最终验证结果：
+
+```text
+npm test -- test/message-sql.test.js test/message-repository.test.js
+# tests 17
+# pass 17
+
+npm test
+# tests 32
+# pass 32
+```
+
+### 修复限制
+
+- 本次修复没有连接真实 MariaDB，repository 行为通过 fake pool 验证。
+- `createDbPool(...)` 测试只创建并关闭 mysql2 pool，不执行查询，不读取真实环境变量。
+- 本次修复不实现留言业务规则、路由、页面或 OAuth 流程。
+- 本归档不包含真实密钥、授权码、访问令牌、数据库密码或本机专用凭据。
