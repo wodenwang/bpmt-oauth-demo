@@ -81,3 +81,80 @@ npm test -- test/config.test.js
 - OAuth 授权码登录、token 交换、用户信息读取、本地 session、数据库表初始化、留言 CRUD 和页面样式均未在 Task 1 实现。
 - 本轮没有连接 BPMT 实例或 MariaDB，只验证配置解析逻辑。
 - 本归档不包含真实密钥、授权码、访问令牌、数据库密码或本机专用凭据。
+
+## Task 2 用户目标
+
+实现 BPMT OpenAPI 请求签名工具和 `DEMO_MESSAGE` 动态表定义，为后续 setup 脚本调用 BPMT API 创建留言登记表提供基础。Task 2 只提供可复用的签名函数、canonical string 构造、query 归一化和表结构常量，不实际调用 BPMT API，也不连接数据库。
+
+## Task 2 Codex 任务提示词
+
+```text
+你正在实现 Task 2: BPMT API 签名和 DEMO_MESSAGE 表定义。
+
+要求：
+1. 只实现 Task 2，不实现后续 BPMT OpenAPI 调用、数据库初始化、OAuth 登录或留言 CRUD。
+2. 采用 TDD 顺序：先写 `test/bpmt-signature.test.js` 和 `test/table-definition.test.js`，运行测试确认缺少模块时失败，再创建实现文件。
+3. 创建 `src/bpmt/signature.js`，实现 `normalizeQuery`、`buildCanonicalString`、`signBpmtRequest`。
+4. 创建 `src/setup/tableDefinition.js`，导出 `DEMO_MESSAGE_TABLE` 表定义。
+5. canonical string 必须按 BPMT OpenAPI 说明使用 `METHOD`、`PATH`、`NORMALIZED_QUERY`、`TIMESTAMP`、`NONCE`、`SHA256_HEX(BODY)` 逐行拼接。
+6. query 排序必须使用确定性的 Java `String.compareTo` 等价顺序：先比较 name，再比较 value。
+7. query 编码必须对齐 BPMT Java 服务端 `URLEncoder.encode(...).replace("+", "%20")` 风格：空格编码为 `%20`，`~!'()` 编码为大写 percent hex，`*` 保持不编码。
+8. 不写入真实密钥；测试中只能使用固定假值。
+9. 最终运行 `npm test -- test/bpmt-signature.test.js test/table-definition.test.js` 和 `npm test`。
+```
+
+## Task 2 修改文件
+
+初始实现修改文件：
+
+- `src/bpmt/signature.js`
+- `src/setup/tableDefinition.js`
+- `test/bpmt-signature.test.js`
+- `test/table-definition.test.js`
+
+代码质量复审修正文件：
+
+- `src/bpmt/signature.js`
+- `test/bpmt-signature.test.js`
+- `test/table-definition.test.js`
+
+本归档补记文件：
+
+- `docs/codex/prompts/2026-05-04-03-message-registry-implementation.md`
+
+## Task 2 验证命令
+
+Task 2 初始实现和复审修正过程中使用的关键验证命令：
+
+```bash
+npm test -- test/bpmt-signature.test.js test/table-definition.test.js
+npm test
+git diff --name-only
+git status --short --branch
+```
+
+当前最终验证命令：
+
+```bash
+npm test -- test/bpmt-signature.test.js test/table-definition.test.js
+```
+
+## Task 2 结果摘要
+
+- 已实现 `normalizeQuery(query = '')`，支持去除开头 `?`、解析重复参数、按解码后的 name/value 排序，并重新编码为 BPMT 签名需要的 query string。
+- 已将 query 排序对齐 Java `String.compareTo` 语义，使用确定性的 UTF-16/code-unit 字符串比较，避免 `localeCompare` 受 locale 或 ICU 行为影响。
+- 已将 query 编码对齐 BPMT Java 服务端：空格输出 `%20`，`~!'()` 输出 `%7E%21%27%28%29`，`*` 保持不编码。
+- 已实现 `buildCanonicalString(...)`，按 `METHOD`、`PATH`、`NORMALIZED_QUERY`、`TIMESTAMP`、`NONCE`、`SHA256_HEX(BODY)` 用换行连接。
+- 已实现 `signBpmtRequest(...)`，使用 `HMAC-SHA256` 和服务端保存的 app secret 生成 `X-BPMT-Signature`，并返回 BPMT 所需的 `X-BPMT-App-Key`、`X-BPMT-Timestamp`、`X-BPMT-Nonce`、`X-BPMT-Signature` 请求头。
+- 已创建 `DEMO_MESSAGE_TABLE`，表名为 `DEMO_MESSAGE`，包含 `ID`、`TITLE`、`CONTENT`、`CREATOR_USERID`、`CREATE_TIME`、`UPDATE_TIME` 六个字段；`ID` 为主键，`CONTENT` 为 `Clob`。
+- 已补充 signature golden 断言，覆盖固定输入下的签名值。
+- 已补充混合大小写、特殊字符、重复参数的 `normalizeQuery` 测试。
+- 已增强 `DEMO_MESSAGE_TABLE` 测试，全量断言字段 `type`、`totalSize`、`required`、`primaryKey` 等结构。
+
+## Task 2 已知限制
+
+- Task 2 只实现签名函数和动态表定义，不调用 BPMT `/api/v1/dynamic-tables`。
+- Task 2 不读取 `.env`，也不读取 `.codex/project-record.local.md`；真实 `BPMT_API_APP_SECRET` 仍只允许保存在本机未跟踪文件中。
+- Task 2 没有连接本机 BPMT 实例、MariaDB 或 OpenAPI 文档，只通过单元测试验证 canonical string、签名头和表定义结构。
+- `signBpmtRequest(...)` 由调用方传入 `timestamp`、`nonce`、`appKey` 和 `appSecret`；后续 Task 需要负责生成 nonce、读取配置、发起 HTTP 请求和处理 BPMT 返回值。
+- 本归档不包含真实密钥、授权码、访问令牌、数据库密码或本机专用凭据。
