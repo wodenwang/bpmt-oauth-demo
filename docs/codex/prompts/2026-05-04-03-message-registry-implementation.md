@@ -349,3 +349,89 @@ npm test
 - 本次修复不修改 `scripts/setup.js`，也不修改 Task 2 的 `src/bpmt/signature.js`。
 - 测试中的 `api-secret` 是固定假值，不是真实 `BPMT_API_APP_SECRET`。
 - 本归档不包含真实密钥、授权码、访问令牌、数据库密码或本机专用凭据。
+
+## Task 4 用户目标
+
+实现 MariaDB 留言 SQL 构造和 Repository 封装，为后续留言业务规则提供参数化 SQL 访问层。Task 4 只构造 SQL、创建连接池工厂和 repository 包装，不连接真实 MariaDB，也不实现后续业务校验、路由或页面。
+
+## Task 4 Codex 任务提示词
+
+```text
+你正在实现 Task 4: MariaDB 留言 SQL 和 Repository。
+
+要求：
+1. 只实现 Task 4，不实现后续任务。
+2. 只写入 `src/db/pool.js`、`src/messages/sql.js`、`src/messages/repository.js`、`test/message-sql.test.js`，并更新本滚动归档。
+3. 采用 TDD 顺序：先写 `test/message-sql.test.js`，运行 `npm test -- test/message-sql.test.js` 确认缺少 `src/messages/sql.js` 时失败。
+4. SQL 必须使用参数占位符和 args 数组，不拼接用户输入。
+5. `DEMO_MESSAGE` 支持按标题模糊筛选、按创建人筛选、分页、计数、按 id 查询、插入、更新、删除和表存在性检查。
+6. 创建 `src/db/pool.js`，从 `loadConfig().db` 读取数据库配置并创建 mysql2 promise pool。
+7. 创建 `src/messages/repository.js`，基于注入的 pool.execute 封装 tableExists、list、findById、insert、update、delete。
+8. 不写入真实数据库凭据，不连接真实数据库。
+9. 最终运行 `npm test -- test/message-sql.test.js` 和 `npm test`，并提交。
+```
+
+## Task 4 修改文件
+
+- `src/db/pool.js`
+- `src/messages/sql.js`
+- `src/messages/repository.js`
+- `test/message-sql.test.js`
+- `docs/codex/prompts/2026-05-04-03-message-registry-implementation.md`
+
+## Task 4 验证命令
+
+Task 4 按 TDD 顺序执行的关键验证命令：
+
+```bash
+npm test -- test/message-sql.test.js
+npm test
+git diff --name-only
+git status --short --branch
+```
+
+RED 阶段验证结果：
+
+```text
+npm test -- test/message-sql.test.js
+# fail 1
+# reason: Error [ERR_MODULE_NOT_FOUND]: Cannot find module '.../src/messages/sql.js'
+```
+
+GREEN 阶段验证结果：
+
+```text
+npm test -- test/message-sql.test.js
+# tests 6
+# pass 6
+```
+
+最终验证结果：
+
+```text
+npm test -- test/message-sql.test.js
+# tests 6
+# pass 6
+
+npm test
+# tests 21
+# pass 21
+```
+
+## Task 4 结果摘要
+
+- 已新增 `src/messages/sql.js`，集中构造 `DEMO_MESSAGE` 的参数化 SQL。
+- 已实现列表查询筛选：`TITLE LIKE ?`、`CREATOR_USERID = ?`、`ORDER BY CREATE_TIME DESC`、`LIMIT ? OFFSET ?`。
+- 已实现计数查询，并复用列表筛选逻辑但不带分页参数。
+- 已实现按 id 查询、插入、更新、删除和当前数据库下表存在性检查。
+- 已将分页默认值设为 `page=1`、`pageSize=20`，并将 `pageSize` 上限限制为 `100`。
+- 已新增 `src/db/pool.js`，通过 `mysql2/promise` 和 `loadConfig().db` 创建 MariaDB 连接池。
+- 已新增 `src/messages/repository.js`，基于注入的 pool 封装留言数据访问方法，并将数据库字段映射为 demo 内部字段名。
+- 已确认任务给出的测试实际包含 6 个 test case，最终按实际数量报告 6 个通过。
+
+## Task 4 已知限制
+
+- Task 4 没有连接真实 MariaDB，也没有读取 `.codex/project-record.local.md`。
+- `repository.js` 当前只封装数据库访问，不实现标题长度、内容必填、作者权限、登录态或业务错误处理；这些留给后续 Task。
+- `insert(...)` 和 `update(...)` 执行写入后会调用 `findById(...)` 返回最新记录，调用方需要确保传入的 pool 是可用的服务端数据库连接。
+- 本归档不包含真实密钥、授权码、访问令牌、数据库密码或本机专用凭据。
