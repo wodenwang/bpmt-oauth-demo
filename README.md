@@ -30,36 +30,35 @@ http://localhost:81/oauth/callback
 - 已准备 BPMT API app key/secret，用于 `npm run setup` 初始化 `DEMO_MESSAGE` 动态表。
 - Docker 和 Docker Compose 可用。
 
-复制 Compose 参数模板：
+本项目 `v1.0.0` 的正式部署入口是 `docker-compose.yml`。所有运行配置都集中在该文件中，不需要复制 `.env` 或 `compose.env.example`。
 
-```bash
-cp compose.env.example .env
+编辑 `docker-compose.yml`，至少替换这些占位符：
+
+```yaml
+SESSION_SECRET: "<DEMO_SESSION_SECRET>"
+BPMT_OAUTH_CLIENT_SECRET: "<BPMT_OAUTH_CLIENT_SECRET>"
+BPMT_API_APP_SECRET: "<BPMT_API_APP_SECRET>"
+DB_USER: "<DB_USER>"
+DB_PASSWORD: "<DB_PASSWORD>"
 ```
 
-编辑 `.env`，至少替换这些占位符：
+如果 BPMT、OpenAPI 和 MariaDB 都运行在宿主机，通常保持以下值：
 
-```text
-SESSION_SECRET=<DEMO_SESSION_SECRET>
-BPMT_OAUTH_CLIENT_SECRET=<BPMT_OAUTH_CLIENT_SECRET>
-BPMT_API_APP_SECRET=<BPMT_API_APP_SECRET>
-DB_USER=<DB_USER>
-DB_PASSWORD=<DB_PASSWORD>
+```yaml
+BPMT_BASE_URL: "http://localhost"
+BPMT_SERVER_BASE_URL: "http://host.docker.internal"
+BPMT_API_BASE_URL: "http://host.docker.internal/api"
+DB_HOST: "host.docker.internal"
+ports:
+  - "81:81"
 ```
 
-如果 BPMT、OpenAPI 和 MariaDB 都运行在宿主机，Docker Compose 推荐保持以下值：
-
-```text
-BPMT_BASE_URL=http://localhost
-BPMT_SERVER_BASE_URL=http://host.docker.internal
-BPMT_API_BASE_URL=http://host.docker.internal/api
-DB_HOST=host.docker.internal
-DEMO_HTTP_PORT=81
-```
+应用容器内部端口使用镜像默认值；Compose 只负责把宿主机 `81` 映射到容器 `81`。
 
 先初始化 demo 需要的 BPMT 动态表：
 
 ```bash
-docker compose run --rm --build setup
+docker compose run --rm setup
 ```
 
 启动应用：
@@ -80,15 +79,26 @@ http://localhost:81
 docker compose down
 ```
 
-如果你的 BPMT 或 MariaDB 不在宿主机，请在 `.env` 中调整：
+如果你的 BPMT 或 MariaDB 不在宿主机，请直接在 `docker-compose.yml` 中调整：
 
-| 变量 | 说明 |
+| 配置 | 说明 |
 | --- | --- |
 | `BPMT_BASE_URL` | 浏览器访问 BPMT 的外部地址，用于生成 `/oauth/authorize` 跳转地址。 |
 | `BPMT_SERVER_BASE_URL` | demo 容器内访问 BPMT `/oauth/token` 和 `/oauth/userinfo` 的地址。 |
 | `BPMT_API_BASE_URL` | demo 容器内访问 BPMT OpenAPI 的地址，默认形如 `http://host.docker.internal/api`。 |
 | `DB_HOST` | demo 容器内访问 MariaDB 的主机名。 |
-| `DEMO_HTTP_PORT` | 宿主机暴露端口。默认必须是 `81`，除非你也同步修改 BPMT 后台登记的回调地址。 |
+| `ports: "81:81"` | 宿主机暴露端口。正式回调地址固定使用 `81`，除非你也同步修改 BPMT 后台登记的回调地址。 |
+
+发布镜像为多架构镜像，支持 x86 和 ARM：
+
+```text
+ghcr.io/wodenwang/bpmt-oauth-demo:v1.0.0
+ghcr.io/wodenwang/bpmt-oauth-demo:latest
+```
+
+Compose 会自动按运行主机拉取匹配架构，当前发布目标是 `linux/amd64` 和 `linux/arm64`。
+
+如果拉取镜像时出现 `unauthorized`，请先在 GitHub Packages 中把 `bpmt-oauth-demo` container package 的 visibility 设置为 Public。
 
 ## 用 Codex 复刻本项目
 
@@ -189,7 +199,7 @@ docker compose down
 
 ## 环境变量
 
-本地 Node 运行可从 `.env.example` 开始，Docker Compose 运行建议从 `compose.env.example` 开始。密钥请只写入本机 `.env` 或运行环境，不要提交到 Git。
+本地 Node 运行可从 `.env.example` 开始。`v1.0.0` 正式 Docker Compose 部署以 `docker-compose.yml` 为唯一配置入口。密钥请只写入本机运行配置，不要提交到 Git。
 
 ```bash
 cp .env.example .env
@@ -198,7 +208,7 @@ cp .env.example .env
 | 变量 | 说明 |
 | --- | --- |
 | `NODE_ENV` | 运行环境，本地开发通常为 `development`，Docker Compose 默认 `production`。 |
-| `PORT` | demo 容器内监听端口，默认 `81`。 |
+| `PORT` | demo 容器内监听端口，本地 Node 运行默认 `81`；正式 Compose 部署使用镜像默认值，不需要配置该变量。 |
 | `SESSION_SECRET` | demo 本地 session 签名密钥，使用本机私有值。 |
 | `BPMT_BASE_URL` | 浏览器访问 BPMT 的外部基础地址，本机默认 `http://localhost`。 |
 | `BPMT_SERVER_BASE_URL` | 可选，demo 服务端访问 BPMT token/userinfo 的内部地址；不填时默认等于 `BPMT_BASE_URL`。 |
@@ -214,7 +224,7 @@ cp .env.example .env
 | `DB_PASSWORD` | MariaDB 密码，使用本机私有值。 |
 | `DB_NAME` | MariaDB 数据库名，默认 `bpmt`。 |
 
-`.env.example` 和 `compose.env.example` 只包含占位符，不包含真实 `client_secret`、`BPMT_API_APP_SECRET`、授权码、访问令牌、密码或数据库凭据。
+`.env.example`、`compose.env.example` 和公开文档只包含占位符，不包含真实 `client_secret`、`BPMT_API_APP_SECRET`、授权码、访问令牌、密码或数据库凭据。
 
 ## 初始化表结构
 
@@ -290,7 +300,21 @@ npm run dev
 
 ## Docker 镜像
 
-单独构建镜像：
+正式发布镜像：
+
+```text
+ghcr.io/wodenwang/bpmt-oauth-demo:v1.0.0
+ghcr.io/wodenwang/bpmt-oauth-demo:latest
+```
+
+镜像支持：
+
+- `linux/amd64`
+- `linux/arm64`
+
+GHCR package visibility 由维护者在 GitHub Packages 页面设置为 Public；设置完成后可未登录拉取。
+
+本地单架构构建镜像：
 
 ```bash
 docker build -t bpmt-oauth-demo:local .
@@ -326,13 +350,19 @@ npm test
 检查 Compose 配置：
 
 ```bash
-docker compose --env-file compose.env.example --profile setup config
+docker compose --profile setup config
 ```
 
 构建 Docker 镜像：
 
 ```bash
 docker build -t bpmt-oauth-demo:local .
+```
+
+检查发布镜像多架构 manifest：
+
+```bash
+docker buildx imagetools inspect ghcr.io/wodenwang/bpmt-oauth-demo:v1.0.0
 ```
 
 检查工作区：
