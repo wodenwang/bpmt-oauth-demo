@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/static/styles/bpmt.css">
+</head>
+<body>
+  <main class="app-shell narrow-shell">
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">BPMT OAuth Demo</p>
+        <h1>留言详情</h1>
+      </div>
+      <div class="user-bar">
+        <span>用户[<%= user.name || user.userid %>]已登录。</span>
+        <form method="post" action="/logout">
+          <button class="link-button" type="submit">退出 demo</button>
+        </form>
+      </div>
+    </header>
+
+    <article class="message-detail">
+      <h2><%= message.title %></h2>
+      <dl class="message-meta">
+        <div>
+          <dt>创建者</dt>
+          <dd><%= message.creatorUserid %></dd>
+        </div>
+        <div>
+          <dt>创建时间</dt>
+          <dd><%= message.createTime || '' %></dd>
+        </div>
+        <div>
+          <dt>更新时间</dt>
+          <dd><%= message.updateTime || '' %></dd>
+        </div>
+      </dl>
+      <div class="message-content">
+        <p><%= message.content || '' %></p>
+      </div>
+    </article>
+
+    <div class="form-actions">
+      <a class="secondary-button" href="/">返回首页</a>
+      <% if (owned) { %>
+        <% const encodedId = encodeURIComponent(message.id); %>
+        <a class="primary-button" href="/messages/<%= encodedId %>/edit">编辑</a>
+        <form method="post" action="/messages/<%= encodedId %>/delete">
+          <button class="danger-button" type="submit">删除</button>
+        </form>
+      <% } %>
+    </div>
+  </main>
+</body>
+</html>

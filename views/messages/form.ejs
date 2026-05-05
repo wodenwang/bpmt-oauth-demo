@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/static/styles/bpmt.css">
+</head>
+<body>
+  <main class="app-shell narrow-shell">
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">BPMT OAuth Demo</p>
+        <h1><%= title %></h1>
+      </div>
+      <div class="user-bar">
+        <span>用户[<%= user.name || user.userid %>]已登录。</span>
+        <form method="post" action="/logout">
+          <button class="link-button" type="submit">退出 demo</button>
+        </form>
+      </div>
+    </header>
+
+    <form class="message-form" method="post" action="<%= action %>">
+      <label for="message-title">标题</label>
+      <input id="message-title" type="text" name="title" value="<%= message.title || '' %>" maxlength="200" required>
+
+      <label for="message-content">内容</label>
+      <textarea id="message-content" name="content" rows="10" required><%= message.content || '' %></textarea>
+
+      <div class="form-actions">
+        <button class="primary-button" type="submit"><%= mode === 'create' ? '新增留言' : '保存修改' %></button>
+        <a class="secondary-button" href="<%= backHref %>"><%= mode === 'create' ? '返回首页' : '返回详情' %></a>
+      </div>
+    </form>
+  </main>
+</body>
+</html>

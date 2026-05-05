@@ -42,6 +42,22 @@ function emptyResult(filters) {
   };
 }
 
+function isOwner(message, user) {
+  return Boolean(message && user && message.creatorUserid === user.userid);
+}
+
+function notFound(message = '留言不存在') {
+  const error = new Error(message);
+  error.status = 404;
+  return error;
+}
+
+function forbidden(message = '只能编辑自己创建的留言') {
+  const error = new Error(message);
+  error.status = 403;
+  return error;
+}
+
 export function createMessageRouter({ express, service }) {
   const router = express.Router();
 
@@ -65,15 +81,53 @@ export function createMessageRouter({ express, service }) {
     }
   });
 
+  router.get('/messages/new', requireLogin, (req, res) => {
+    res.render('messages/form', {
+      title: '新增留言',
+      user: currentUser(req),
+      message: {},
+      mode: 'create',
+      action: '/messages',
+      backHref: '/'
+    });
+  });
+
   router.get('/messages/:id', requireLogin, async (req, res, next) => {
     try {
       const message = await service.findById(req.params.id);
-      const mode = req.query.mode === 'edit' ? 'edit' : 'view';
-      res.render('messages/modal', {
-        title: mode === 'edit' ? '编辑留言' : '查看留言',
+      if (!message) {
+        throw notFound();
+      }
+
+      res.render('messages/detail', {
+        title: '留言详情',
         user: currentUser(req),
         message,
-        mode
+        owned: isOwner(message, currentUser(req))
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/messages/:id/edit', requireLogin, async (req, res, next) => {
+    try {
+      const message = await service.findById(req.params.id);
+      if (!message) {
+        throw notFound();
+      }
+      if (!isOwner(message, currentUser(req))) {
+        throw forbidden();
+      }
+
+      const encodedId = encodeURIComponent(message.id);
+      res.render('messages/form', {
+        title: '编辑留言',
+        user: currentUser(req),
+        message,
+        mode: 'edit',
+        action: `/messages/${encodedId}/update`,
+        backHref: `/messages/${encodedId}`
       });
     } catch (error) {
       next(error);
