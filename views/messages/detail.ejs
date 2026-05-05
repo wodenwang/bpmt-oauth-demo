@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/static/styles/bpmt.css">
+  <script src="/static/scripts/messages.js" defer></script>
+</head>
+<body>
+  <main class="app-shell narrow-shell">
+    <header class="page-header">
+      <a class="back-link" href="/">返回首页</a>
+      <div>
+        <p class="eyebrow">留言详情</p>
+        <h1><%= message.title %></h1>
+      </div>
+    </header>
+
+    <article class="detail-card">
+      <div class="detail-content"><%= message.content || '' %></div>
+      <dl class="message-meta detail-meta">
+        <div><dt>创建者</dt><dd><%= message.creatorUserid %></dd></div>
+        <div><dt>创建时间</dt><dd><%= message.createTime || '' %></dd></div>
+        <div><dt>更新时间</dt><dd><%= message.updateTime || '' %></dd></div>
+      </dl>
+    </article>
+
+    <div class="form-actions sticky-actions">
+      <% if (owned) { %>
+        <a class="primary-action" href="/messages/<%= encodeURIComponent(message.id) %>/edit">编辑</a>
+        <form method="post" action="/messages/<%= encodeURIComponent(message.id) %>/delete" data-confirm-delete>
+          <button class="danger-action" type="submit">删除</button>
+        </form>
+      <% } %>
+      <a class="secondary-action" href="/">返回首页</a>
+    </div>
+  </main>
+</body>
+</html>

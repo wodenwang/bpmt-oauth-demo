@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/static/styles/bpmt.css">
+</head>
+<body>
+  <main class="app-shell narrow-shell">
+    <header class="page-header">
+      <a class="back-link" href="<%= backHref %>"><%= mode === 'create' ? '返回首页' : '返回详情' %></a>
+      <div>
+        <p class="eyebrow">留言登记</p>
+        <h1><%= mode === 'create' ? '新增留言' : '编辑留言' %></h1>
+      </div>
+    </header>
+
+    <form method="post" action="<%= action %>" class="message-form">
+      <label for="message-title">标题</label>
+      <input id="message-title" name="title" maxlength="200" value="<%= message?.title || '' %>" required>
+
+      <label for="message-content">内容</label>
+      <textarea id="message-content" name="content" rows="10" required><%= message?.content || '' %></textarea>
+
+      <div class="form-actions sticky-actions">
+        <button type="submit" class="primary-action">保存</button>
+        <a class="secondary-action" href="<%= backHref %>"><%= mode === 'create' ? '返回首页' : '取消' %></a>
+      </div>
+    </form>
+  </main>
+</body>
+</html>

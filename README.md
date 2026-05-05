@@ -17,6 +17,17 @@
 http://localhost:81/oauth/callback
 ```
 
+## v2.0.0 移动端 H5 体验
+
+`v2.0.0` 将 demo 主界面重构为移动端 H5 优先的信息流体验。OAuth 授权码流程、回调地址、Docker Compose 配置语义和服务端 session 规则保持不变。
+
+主要变化：
+
+- 首页从桌面表格改为留言卡片信息流。
+- 新增、查看、编辑留言改为独立页面，更适合手机浏览器和 BPMT 内嵌 H5/iframe 场景。
+- PC 浏览器继续使用同一套页面，以宽屏卡片布局兼容。
+- 批量删除不再作为移动端主流程展示，单条删除仍保留二次确认和服务端权限校验。
+
 ## Quick Start：Docker Compose 运行
 
 这条路径适合读者最快体验本 demo。Compose 只运行 `bpmt-oauth-demo` 应用本身，不启动 BPMT 或 MariaDB；你需要已有可访问的 BPMT 环境和 `bpmt` 数据库。
@@ -30,7 +41,51 @@ http://localhost:81/oauth/callback
 - 已准备 BPMT API app key/secret，用于 `npm run setup` 初始化 `DEMO_MESSAGE` 动态表。
 - Docker 和 Docker Compose 可用。
 
-本项目 `v1.0.0` 的正式部署入口是 `docker-compose.yml`。所有运行配置都集中在该文件中，不需要复制 `.env` 或 `compose.env.example`。
+本项目 `v2.0.0` 的正式部署入口是 `docker-compose.yml`。所有运行配置都集中在该文件中，不需要复制 `.env` 或 `compose.env.example`。
+
+可直接复制的 `docker-compose.yml` 示例：
+
+```yaml
+name: bpmt-oauth-demo
+
+x-demo-environment: &demo-environment
+  NODE_ENV: production
+  SESSION_SECRET: "<DEMO_SESSION_SECRET>"
+  BPMT_BASE_URL: "http://localhost"
+  BPMT_SERVER_BASE_URL: "http://host.docker.internal"
+  BPMT_OAUTH_CLIENT_ID: "bpmt-oauth-demo"
+  BPMT_OAUTH_CLIENT_SECRET: "<BPMT_OAUTH_CLIENT_SECRET>"
+  BPMT_OAUTH_REDIRECT_URI: "http://localhost:81/oauth/callback"
+  BPMT_API_BASE_URL: "http://host.docker.internal/api"
+  BPMT_API_APP_KEY: "bpmt-api"
+  BPMT_API_APP_SECRET: "<BPMT_API_APP_SECRET>"
+  DB_HOST: "host.docker.internal"
+  DB_PORT: "3306"
+  DB_USER: "<DB_USER>"
+  DB_PASSWORD: "<DB_PASSWORD>"
+  DB_NAME: "bpmt"
+
+x-demo-service: &demo-service
+  image: ghcr.io/wodenwang/bpmt-oauth-demo:v2.0.0
+  environment: *demo-environment
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
+services:
+  app:
+    <<: *demo-service
+    container_name: bpmt-oauth-demo
+    ports:
+      - "81:81"
+    restart: unless-stopped
+
+  setup:
+    <<: *demo-service
+    profiles:
+      - setup
+    command: ["npm", "run", "setup"]
+    restart: "no"
+```
 
 编辑 `docker-compose.yml`，至少替换这些占位符：
 
@@ -92,7 +147,7 @@ docker compose down
 发布镜像为多架构镜像，支持 x86 和 ARM：
 
 ```text
-ghcr.io/wodenwang/bpmt-oauth-demo:v1.0.0
+ghcr.io/wodenwang/bpmt-oauth-demo:v2.0.0
 ghcr.io/wodenwang/bpmt-oauth-demo:latest
 ```
 
@@ -185,7 +240,9 @@ Compose 会自动按运行主机拉取匹配架构，当前发布目标是 `linu
 - BPMT OAuth 授权码登录入口和回调处理。
 - demo 本地 session，不把 BPMT `access_token` 当作永久会话。
 - 登录后展示 BPMT 返回的 `userid`、姓名、组织和角色基础信息。
-- 留言登记列表、查询、新增、查看、编辑、删除和批量删除。
+- 移动端 H5 优先的留言卡片信息流。
+- 独立的新增、查看和编辑留言页面。
+- 留言登记列表、查询、新增、查看、编辑、删除。
 - 新增留言的创建人由服务端写入当前 BPMT `userid`，浏览器提交的创建人字段不会作为可信来源。
 - 修改和删除只允许留言创建人执行。
 - `npm run setup` 初始化 BPMT 动态表 `DEMO_MESSAGE` 并执行 DDL 同步。
@@ -199,7 +256,7 @@ Compose 会自动按运行主机拉取匹配架构，当前发布目标是 `linu
 
 ## 环境变量
 
-本地 Node 运行可从 `.env.example` 开始。`v1.0.0` 正式 Docker Compose 部署以 `docker-compose.yml` 为唯一配置入口。密钥请只写入本机运行配置，不要提交到 Git。
+本地 Node 运行可从 `.env.example` 开始。`v2.0.0` 正式 Docker Compose 部署以 `docker-compose.yml` 为唯一配置入口。密钥请只写入本机运行配置，不要提交到 Git。
 
 ```bash
 cp .env.example .env
@@ -303,7 +360,7 @@ npm run dev
 正式发布镜像：
 
 ```text
-ghcr.io/wodenwang/bpmt-oauth-demo:v1.0.0
+ghcr.io/wodenwang/bpmt-oauth-demo:v2.0.0
 ghcr.io/wodenwang/bpmt-oauth-demo:latest
 ```
 
@@ -362,7 +419,7 @@ docker build -t bpmt-oauth-demo:local .
 检查发布镜像多架构 manifest：
 
 ```bash
-docker buildx imagetools inspect ghcr.io/wodenwang/bpmt-oauth-demo:v1.0.0
+docker buildx imagetools inspect ghcr.io/wodenwang/bpmt-oauth-demo:v2.0.0
 ```
 
 检查工作区：
