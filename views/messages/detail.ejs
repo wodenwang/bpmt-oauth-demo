@@ -5,52 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= title %></title>
   <link rel="stylesheet" href="/static/styles/bpmt.css">
+  <script src="/static/scripts/messages.js" defer></script>
 </head>
 <body>
   <main class="app-shell narrow-shell">
-    <header class="app-header">
+    <header class="page-header">
+      <a class="back-link" href="/">返回首页</a>
       <div>
-        <p class="eyebrow">BPMT OAuth Demo</p>
-        <h1>留言详情</h1>
-      </div>
-      <div class="user-bar">
-        <span>用户[<%= user.name || user.userid %>]已登录。</span>
-        <form method="post" action="/logout">
-          <button class="link-button" type="submit">退出 demo</button>
-        </form>
+        <p class="eyebrow">留言详情</p>
+        <h1><%= message.title %></h1>
       </div>
     </header>
 
-    <article class="message-detail">
-      <h2><%= message.title %></h2>
-      <dl class="message-meta">
-        <div>
-          <dt>创建者</dt>
-          <dd><%= message.creatorUserid %></dd>
-        </div>
-        <div>
-          <dt>创建时间</dt>
-          <dd><%= message.createTime || '' %></dd>
-        </div>
-        <div>
-          <dt>更新时间</dt>
-          <dd><%= message.updateTime || '' %></dd>
-        </div>
+    <article class="detail-card">
+      <div class="detail-content"><%= message.content || '' %></div>
+      <dl class="message-meta detail-meta">
+        <div><dt>创建者</dt><dd><%= message.creatorUserid %></dd></div>
+        <div><dt>创建时间</dt><dd><%= message.createTime || '' %></dd></div>
+        <div><dt>更新时间</dt><dd><%= message.updateTime || '' %></dd></div>
       </dl>
-      <div class="message-content">
-        <p><%= message.content || '' %></p>
-      </div>
     </article>
 
-    <div class="form-actions">
-      <a class="secondary-button" href="/">返回首页</a>
+    <div class="form-actions sticky-actions">
       <% if (owned) { %>
-        <% const encodedId = encodeURIComponent(message.id); %>
-        <a class="primary-button" href="/messages/<%= encodedId %>/edit">编辑</a>
-        <form method="post" action="/messages/<%= encodedId %>/delete">
-          <button class="danger-button" type="submit">删除</button>
+        <a class="primary-action" href="/messages/<%= encodeURIComponent(message.id) %>/edit">编辑</a>
+        <form method="post" action="/messages/<%= encodeURIComponent(message.id) %>/delete" data-confirm-delete>
+          <button class="danger-action" type="submit">删除</button>
         </form>
       <% } %>
+      <a class="secondary-action" href="/">返回首页</a>
     </div>
   </main>
 </body>
