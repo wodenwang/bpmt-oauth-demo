@@ -235,6 +235,10 @@ Compose 会自动按运行主机拉取匹配架构，当前发布目标是 `linu
 
 本仓库已经把这些历史记录保存在 `docs/codex/prompts/`，其中 `2026-05-04-03-message-registry-implementation.md` 是滚动实现记录，适合当作更完整的复刻样例。
 
+如果你的目标是从空白项目开始，让 Codex 或 Claude Code 先生成 `AGENTS.md` / `CLAUDE.md`，请优先使用这套标准提示词：
+
+- [BPMT OAuth Agent 初始化提示词套件](docs/codex/bpmt-oauth-agent-prompt-kit.md)
+
 ## 功能
 
 - BPMT OAuth 授权码登录入口和回调处理。

@@ -21,3 +21,7 @@
 - `YYYY-MM-DD-02-scaffold-demo-app.md`
 - `YYYY-MM-DD-03-oauth-login-flow.md`
 - `YYYY-MM-DD-04-local-verification.md`
+
+## 可复用提示词套件
+
+- [BPMT OAuth Agent 初始化提示词套件](../bpmt-oauth-agent-prompt-kit.md)：面向第三方系统开发者，用于在空白项目中生成 `AGENTS.md`、`CLAUDE.md` 或团队约定的 `AGENT.md`，并约束后续开发只使用 BPMT OAuth 授权码流程。
